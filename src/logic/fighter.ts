@@ -1,4 +1,5 @@
-import type { CharacterData, Fighter, FighterStateName, InputFrame, Params } from './types';
+import { toWorld } from './boxes';
+import type { Box, CharacterData, Fighter, FighterStateName, HitData, InputFrame, MoveData, Params } from './types';
 
 export function createFighter(char: CharacterData, x: number, facing: 1 | -1): Fighter {
   return {
@@ -10,6 +11,27 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     state: { name: 'idle', frame: 1 },
     moveHasHit: false,
   };
+}
+
+export function moveTotalFrames(move: MoveData): number {
+  return move.startup + move.active + move.recovery;
+}
+
+/** 攻撃の箱（ステージ座標）。持続中で、まだ当たっていない時だけ返す */
+export function activeHitbox(f: Fighter): { box: Box; hit: HitData } | null {
+  if (f.state.name !== 'attack' || f.moveHasHit) return null;
+  const move = f.char.moves.punch;
+  const frame = f.state.frame;
+  if (frame <= move.startup || frame > move.startup + move.active) return null;
+  const hit = move.hits[0];
+  return { box: toWorld(hit.box, f), hit };
+}
+
+/** 食らいの箱（ステージ座標）。しゃがみ・空中・それ以外（立ち）で使い分ける */
+export function hurtBoxes(f: Fighter): Box[] {
+  const hurt = f.char.boxes.hurt;
+  const local = f.state.name === 'crouch' ? hurt.crouch : f.state.name === 'air' ? hurt.air : hurt.stand;
+  return local.map((box) => toWorld(box, f));
 }
 
 /** 画面端の余白より端に行かないようにする */
@@ -28,6 +50,16 @@ export function jumpY(frame: number, total: number, height: number): number {
 export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
   const st = f.state;
   switch (st.name) {
+    case 'attack': {
+      // 全体フレームが終わるまでは技の途中。終わったフレームは自由に動ける
+      if (st.frame + 1 <= moveTotalFrames(f.char.moves.punch)) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      break;
+    }
+    case 'hitstun':
+    case 'blockstun': {
+      if (st.frame + 1 <= (st.duration ?? 0)) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      break;
+    }
     case 'jumpSquat': {
       if (st.frame + 1 <= params.jumpSquatFrames) return { ...f, state: { ...st, frame: st.frame + 1 } };
       const { jumpAirFrames, jumpHeight } = f.char.stats;
@@ -57,6 +89,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
     state: { name, frame: f.state.name === name ? f.state.frame + 1 : 1 },
   });
 
+  if (input.pressed.punch) return { ...base, state: { name: 'attack', frame: 1 } };
   if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1 } };
   if (held.guard) return enter('guard');
   if (held.down) return enter('crouch');
