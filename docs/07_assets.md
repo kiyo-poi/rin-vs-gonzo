@@ -113,11 +113,10 @@
 
 ### 絵柄
 
-- 推奨（ユーザー未確定）：**2〜3頭身のデフォルメ・アニメ調・太い輪郭線**
+- 決定：**2〜3頭身のデフォルメ・アニメ調・太い輪郭線**
   - コミカルさが出しやすい
   - 太い輪郭線は小さく表示しても見やすく、背景の上でもキャラが埋もれにくい
   - 頭身が低いと手足の形が崩れにくく、枚数を揃えやすい
-- 確定したら、下のプロンプトの「絵柄の部分」をその言葉に置き換える
 
 ### 進め方
 
@@ -172,11 +171,12 @@ black cloth shoes, white wrist wraps, confident smile
 
 ```
 a huge muscular professional wrestler, very broad chest and thick arms,
-short spiky hair, thick eyebrows, mustache, blue wrestling singlet,
-red wrestling boots, white tape on wrists, big cheerful grin
+black mohawk, thick eyebrows, mustache, black wrestling trunks,
+yellow wrestling boots, white tape on wrists, big cheerful grin
 ```
 
-- 髪型・服・色は仮。設定シートを作る時に決め、決まったらこの文も合わせて直す
+- 見た目は仮決め：リンはお団子2つ・赤いチャイナ服、ゴンゾーはモヒカン・黒いパンツ・黄色いブーツ（赤と黒/黄で対比を出す）。設定シートを作る時に変えてよく、変えたらこの文も合わせて直す
+- AI 画像はユーザーがすでに使っているツールで作る。使う前に「生成画像をゲームに使って公開してよいか」をそのツールの規約で確認する
 
 #### ポーズの部分（例）
 
