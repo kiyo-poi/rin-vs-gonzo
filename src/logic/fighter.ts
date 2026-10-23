@@ -18,8 +18,28 @@ export function clampX(x: number, params: Params): number {
   return Math.min(width - edgeMargin, Math.max(edgeMargin, x));
 }
 
+/** ジャンプの放物線。空中の frame F目の高さ（frame = total / 2 で一番高い） */
+export function jumpY(frame: number, total: number, height: number): number {
+  const t = frame / total;
+  return 4 * height * t * (1 - t);
+}
+
 /** 1フレーム進める */
 export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
+  const st = f.state;
+  switch (st.name) {
+    case 'jumpSquat': {
+      if (st.frame + 1 <= params.jumpSquatFrames) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      const { jumpAirFrames, jumpHeight } = f.char.stats;
+      return { ...f, y: jumpY(1, jumpAirFrames, jumpHeight), state: { name: 'air', frame: 1 } };
+    }
+    case 'air': {
+      const { jumpAirFrames, jumpHeight } = f.char.stats;
+      const frame = st.frame + 1;
+      if (frame >= jumpAirFrames) return { ...f, y: 0, state: { name: 'idle', frame: 1 } };
+      return { ...f, y: jumpY(frame, jumpAirFrames, jumpHeight), state: { name: 'air', frame } };
+    }
+  }
   return stepFree(f, input, opponentX, params);
 }
 
@@ -37,6 +57,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
     state: { name, frame: f.state.name === name ? f.state.frame + 1 : 1 },
   });
 
+  if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1 } };
   if (held.guard) return enter('guard');
   if (held.down) return enter('crouch');
   if (horizontal !== 0) {
