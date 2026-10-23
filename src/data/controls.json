@@ -1,0 +1,12 @@
+{
+  "p1": {
+    "left": ["KeyA"], "right": ["KeyD"], "up": ["KeyW"], "down": ["KeyS"],
+    "punch": ["KeyF"], "kick": ["KeyG"], "grab": ["KeyH"], "special": ["KeyV"], "guard": ["KeyB"]
+  },
+  "p2": {
+    "left": ["ArrowLeft"], "right": ["ArrowRight"], "up": ["ArrowUp"], "down": ["ArrowDown"],
+    "punch": ["Numpad4", "KeyJ"], "kick": ["Numpad5", "KeyK"], "grab": ["Numpad6", "KeyL"],
+    "special": ["Numpad1", "KeyM"], "guard": ["Numpad2", "Comma"]
+  },
+  "pause": ["Escape"]
+}

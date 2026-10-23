@@ -1,0 +1,10 @@
+{
+  "weights": {
+    "light": { "hitstun": 14, "blockstun": 10 },
+    "medium": { "hitstun": 18, "blockstun": 13 },
+    "heavy": { "hitstun": 24, "blockstun": 17 }
+  },
+  "jumpSquatFrames": 3,
+  "stage": { "width": 1280, "edgeMargin": 60, "startDistance": 480 },
+  "render": { "groundY": 620 }
+}
