@@ -21,7 +21,7 @@ describe('パンチ（発生4・持続2・硬直8）', () => {
   const t = timeline(16, punchAtFirst); // t[0] が1F目
 
   it('押したフレームが技の1F目', () => {
-    expect(t[0].state).toEqual({ name: 'attack', frame: 1 });
+    expect(t[0].state).toEqual({ name: 'attack', frame: 1, move: 'punch' });
   });
 
   it('攻撃の箱は 5〜6F目だけ出る', () => {
@@ -36,19 +36,19 @@ describe('パンチ（発生4・持続2・硬直8）', () => {
   });
 
   it('14F目までは技の途中、15F目から待機に戻る', () => {
-    expect(t[13].state).toEqual({ name: 'attack', frame: 14 });
+    expect(t[13].state).toEqual({ name: 'attack', frame: 14, move: 'punch' });
     expect(t[14].state.name).toBe('idle');
   });
 
   it('技の途中は歩けず、パンチも出し直せない', () => {
     const busy = timeline(14, (i) => (i === 1 ? inputOf([], ['punch']) : inputOf(['right'], i % 2 === 0 ? ['punch'] : [])));
-    expect(busy[13].state).toEqual({ name: 'attack', frame: 14 });
+    expect(busy[13].state).toEqual({ name: 'attack', frame: 14, move: 'punch' });
     expect(busy[13].x).toBe(400);
   });
 
   it('15F目に押せば次のパンチが出る', () => {
     const again = timeline(15, (i) => (i === 1 || i === 15 ? inputOf([], ['punch']) : inputOf()));
-    expect(again[14].state).toEqual({ name: 'attack', frame: 1 });
+    expect(again[14].state).toEqual({ name: 'attack', frame: 1, move: 'punch' });
   });
 
   it('当たったあとは攻撃の箱が消える', () => {
@@ -72,6 +72,6 @@ describe('のけぞり・ガード硬直', () => {
     expect(f.state).toEqual({ name: 'hitstun', frame: 14, duration: 14 });
     expect(f.x).toBe(400);
     f = stepFighter(f, inputOf([], ['punch']), 900, params);
-    expect(f.state).toEqual({ name: 'attack', frame: 1 });
+    expect(f.state).toEqual({ name: 'attack', frame: 1, move: 'punch' });
   });
 });

@@ -1,5 +1,5 @@
 import { toWorld } from './boxes';
-import type { Box, CharacterData, Fighter, FighterStateName, HitData, InputFrame, MoveData, Params } from './types';
+import type { Box, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, Params } from './types';
 
 export function createFighter(char: CharacterData, x: number, facing: 1 | -1): Fighter {
   return {
@@ -19,10 +19,10 @@ export function moveTotalFrames(move: MoveData): number {
 
 /** 攻撃の箱（ステージ座標）。持続中で、まだ当たっていない時だけ返す */
 export function activeHitbox(f: Fighter): { box: Box; hit: HitData } | null {
-  if (f.state.name !== 'attack' || f.moveHasHit) return null;
-  const move = f.char.moves.punch;
-  const frame = f.state.frame;
-  if (frame <= move.startup || frame > move.startup + move.active) return null;
+  const st = f.state;
+  if (st.name !== 'attack' || f.moveHasHit) return null;
+  const move = f.char.moves[st.move];
+  if (st.frame <= move.startup || st.frame > move.startup + move.active) return null;
   const hit = move.hits[0];
   return { box: toWorld(hit.box, f), hit };
 }
@@ -52,12 +52,12 @@ export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, pa
   switch (st.name) {
     case 'attack': {
       // 全体フレームが終わるまでは技の途中。終わったフレームは自由に動ける
-      if (st.frame + 1 <= moveTotalFrames(f.char.moves.punch)) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      if (st.frame + 1 <= moveTotalFrames(f.char.moves[st.move])) return { ...f, state: { ...st, frame: st.frame + 1 } };
       break;
     }
     case 'hitstun':
     case 'blockstun': {
-      if (st.frame + 1 <= (st.duration ?? 0)) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
       break;
     }
     case 'jumpSquat': {
@@ -84,13 +84,15 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   const horizontal = (held.right ? 1 : 0) - (held.left ? 1 : 0);
   const base: Fighter = { ...f, facing, moveHasHit: false };
 
-  const enter = (name: FighterStateName, x = base.x): Fighter => ({
+  const enter = (name: FreeStateName, x = base.x): Fighter => ({
     ...base,
     x,
     state: { name, frame: f.state.name === name ? f.state.frame + 1 : 1 },
   });
 
-  if (input.pressed.punch) return { ...base, state: { name: 'attack', frame: 1 } };
+  // 同じフレームに押されたらキックを優先する（08_architecture.md の優先順位）
+  if (input.pressed.kick) return { ...base, state: { name: 'attack', frame: 1, move: 'kick' } };
+  if (input.pressed.punch) return { ...base, state: { name: 'attack', frame: 1, move: 'punch' } };
   if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1 } };
   if (held.guard) return enter('guard');
   if (held.down) return enter('crouch');

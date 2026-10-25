@@ -54,7 +54,7 @@ describe('ジャンプ', () => {
       f = stepFighter(f, input, 900, params);
     }
     expect(f.y).toBe(0);
-    expect(f.state).toEqual({ name: 'attack', frame: 1 });
+    expect(f.state).toEqual({ name: 'attack', frame: 1, move: 'punch' });
   });
 
   it('空中で → を押しても横に動かない（M1 は真上ジャンプだけ）', () => {

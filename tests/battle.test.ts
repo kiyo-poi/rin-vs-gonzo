@@ -48,7 +48,7 @@ describe('ヒット', () => {
       i >= 6 ? inputOf([], ['punch']) : NONE,
     ]);
     expect(recover[18].fighters[1].state.name).toBe('hitstun');
-    expect(recover[19].fighters[1].state).toEqual({ name: 'attack', frame: 1 });
+    expect(recover[19].fighters[1].state).toEqual({ name: 'attack', frame: 1, move: 'punch' });
   });
 
   it('届かない距離では当たらない', () => {

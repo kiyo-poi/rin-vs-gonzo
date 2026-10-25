@@ -16,6 +16,13 @@
       "active": 2,
       "recovery": 8,
       "hits": [{ "damage": 30, "weight": "light", "box": { "x": 20, "y": 100, "w": 70, "h": 20 } }]
+    },
+    "kick": {
+      "name": "旋風脚",
+      "startup": 8,
+      "active": 3,
+      "recovery": 14,
+      "hits": [{ "damage": 50, "weight": "medium", "box": { "x": 20, "y": 60, "w": 110, "h": 24 } }]
     }
   }
 }

@@ -39,6 +39,9 @@ export interface MoveData {
   hits: HitData[];
 }
 
+/** 技を出すボタンの枠（M3 でしゃがみ技・掴み・必殺などが増える） */
+export type MoveSlot = 'punch' | 'kick';
+
 export interface CharacterData {
   id: string;
   name: string;
@@ -54,7 +57,7 @@ export interface CharacterData {
   boxes: {
     hurt: { stand: Box[]; crouch: Box[]; air: Box[] };
   };
-  moves: { punch: MoveData };
+  moves: Record<MoveSlot, MoveData>;
 }
 
 export interface Params {
@@ -73,17 +76,21 @@ export interface Controls {
   pause: string[];
 }
 
-export type FighterStateName =
-  | 'idle' | 'walkForward' | 'walkBack' | 'crouch' | 'guard'
-  | 'jumpSquat' | 'air' | 'attack' | 'hitstun' | 'blockstun';
+/** 自由に動ける状態 */
+export type FreeStateName = 'idle' | 'walkForward' | 'walkBack' | 'crouch' | 'guard';
 
-export interface FighterState {
-  name: FighterStateName;
-  /** この状態に入ってからのフレーム数（入ったフレームが1） */
-  frame: number;
-  /** のけぞり・ガード硬直の長さ */
-  duration?: number;
-}
+/**
+ * キャラの状態。frame はこの状態に入ってからのフレーム数（入ったフレームが1）。
+ * のけぞり・ガード硬直だけは、当たったフレームに frame: 0 で入れ、次のフレームが1になる。
+ */
+export type FighterState =
+  | { name: FreeStateName; frame: number }
+  | { name: 'jumpSquat'; frame: number }
+  | { name: 'air'; frame: number }
+  | { name: 'attack'; frame: number; move: MoveSlot }
+  | { name: 'hitstun' | 'blockstun'; frame: number; duration: number };
+
+export type FighterStateName = FighterState['name'];
 
 export interface Fighter {
   char: CharacterData;
