@@ -57,6 +57,29 @@ describe('ヒット', () => {
   });
 });
 
+describe('2P の攻撃', () => {
+  it('2P だけがパンチすると、5F目に 1P へ当たる', () => {
+    const t = play([400, 500], 5, (i) => [NONE, i === 1 ? inputOf([], ['punch']) : NONE]);
+    expect(t[4].fighters[0].health).toBe(820);
+    expect(t[4].events).toEqual([{ type: 'hit', attacker: 1, damage: 30 }]);
+  });
+});
+
+describe('空中で食らう', () => {
+  it('空中の相手に当てたら、のけぞると同時に地面へ戻り、浮いたままにならない', () => {
+    const t = play([400, 500], 40, (i) => [
+      i === 3 ? inputOf([], ['punch']) : NONE,
+      i === 1 ? inputOf([], ['up']) : NONE,
+    ]);
+    const hitIndex = t.findIndex((b) => b.events.some((e) => e.type === 'hit'));
+    expect(hitIndex).toBeGreaterThanOrEqual(0);
+    expect(t[hitIndex].fighters[1].state.name).toBe('hitstun');
+    expect(t[hitIndex].fighters[1].y).toBe(0);
+    expect(t[hitIndex + 20].fighters[1].state.name).not.toBe('air');
+    expect(t[hitIndex + 20].fighters[1].y).toBe(0);
+  });
+});
+
 describe('ガード', () => {
   const t = play([400, 500], 14, (i) => [i === 1 ? inputOf([], ['punch']) : NONE, inputOf(['guard'])]);
 

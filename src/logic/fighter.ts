@@ -68,8 +68,9 @@ export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, pa
     case 'air': {
       const { jumpAirFrames, jumpHeight } = f.char.stats;
       const frame = st.frame + 1;
-      if (frame >= jumpAirFrames) return { ...f, y: 0, state: { name: 'idle', frame: 1 } };
-      return { ...f, y: jumpY(frame, jumpAirFrames, jumpHeight), state: { name: 'air', frame } };
+      if (frame < jumpAirFrames) return { ...f, y: jumpY(frame, jumpAirFrames, jumpHeight), state: { name: 'air', frame } };
+      // 着地したフレームは、そのまま自由に動ける（入力を受け付け、向きも更新する）
+      return stepFree({ ...f, y: 0, state: { name: 'idle', frame: 0 } }, input, opponentX, params);
     }
   }
   return stepFree(f, input, opponentX, params);

@@ -55,6 +55,8 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       fighters[defender] = {
         ...fighters[defender],
         health: Math.max(0, fighters[defender].health - result.hit.damage),
+        // M1 は空中で食らったら即座に地面へ戻す（落下してダウンする動きは M2/M3 で作る）
+        y: 0,
         state: { name: 'hitstun', frame: 0, duration: weight.hitstun },
       };
       events.push({ type: 'hit', attacker, damage: result.hit.damage });

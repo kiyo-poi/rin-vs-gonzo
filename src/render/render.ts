@@ -56,7 +56,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, battle: Battle, params:
   }
 }
 
-/** 体力バー。1P は左、2P は右。減ると中央側から縮む */
+/** 体力バー。1P は左、2P は右。減ると外側から縮む（中央側に寄せて描く） */
 function drawHealth(ctx: CanvasRenderingContext2D, f: Fighter, index: number, width: number): void {
   const { width: barW, height: barH, top, side } = HEALTH_BAR;
   const x = index === 0 ? side : width - side - barW;

@@ -47,6 +47,16 @@ describe('ジャンプ', () => {
     expect(t[38].y).toBe(0);
   });
 
+  it('着地した39F目にもパンチが押せる（入力を落とさない）', () => {
+    let f = createFighter(proto, 400, 1);
+    for (let i = 1; i <= 39; i++) {
+      const input = i === 1 ? inputOf([], ['up']) : i === 39 ? inputOf([], ['punch']) : inputOf();
+      f = stepFighter(f, input, 900, params);
+    }
+    expect(f.y).toBe(0);
+    expect(f.state).toEqual({ name: 'attack', frame: 1 });
+  });
+
   it('空中で → を押しても横に動かない（M1 は真上ジャンプだけ）', () => {
     let f = stepFighter(createFighter(proto, 400, 1), inputOf([], ['up']), 900, params);
     for (let i = 0; i < 10; i++) f = stepFighter(f, inputOf(['right']), 900, params);
