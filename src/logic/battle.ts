@@ -1,13 +1,9 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, createFighter, faceOpponent, hurtBoxes, isHittable, stepFighter } from './fighter';
+import { activeHitbox, clampX, clashRecoil, createFighter, faceOpponent, hurtBoxes, isHittable, stepFighter } from './fighter';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
-export interface BattleEvent {
-  type: 'hit' | 'block';
-  attacker: 0 | 1;
-  damage: number;
-}
+export type BattleEvent = { type: 'hit' | 'block'; attacker: 0 | 1; damage: number } | { type: 'clash' };
 
 export interface Battle {
   frame: number;
@@ -41,6 +37,15 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
 
   // 両者とも「動かしたあとの同じ状態」で調べる（1P が先に処理されて有利にならないように）
   const results = [resolveAttack(moved[0], moved[1]), resolveAttack(moved[1], moved[0])];
+
+  // 両者の攻撃が同時に届いたら相打ち。ダメージ・ガード・ノックバックなしで両者が弾かれる
+  if (results[0] && results[1]) {
+    return {
+      frame: b.frame + 1,
+      fighters: [clashRecoil(moved[0], params), clashRecoil(moved[1], params)],
+      events: [{ type: 'clash' }],
+    };
+  }
 
   const fighters: [Fighter, Fighter] = [moved[0], moved[1]];
   const events: BattleEvent[] = [];
@@ -84,9 +89,14 @@ function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; bl
   return { hit: active.hit, blocked };
 }
 
-/** 守る側を攻撃側の向きへ押す。画面端で下がれない分は、攻撃側が逆へ下がる（画面端で永久に殴り続けられないように） */
+/** ノックバックの向き。相手が右なら 1、左なら -1、同じ位置なら攻撃側の向き */
+export function knockbackDirection(attacker: Fighter, defender: Fighter): 1 | -1 {
+  return defender.x > attacker.x ? 1 : defender.x < attacker.x ? -1 : attacker.facing;
+}
+
+/** 守る側を攻撃側から遠ざける向きへ押す。画面端で下がれない分は、攻撃側が逆へ下がる（画面端で永久に殴り続けられないように） */
 function applyKnockback(attacker: Fighter, defender: Fighter, distance: number, params: Params): [Fighter, Fighter] {
-  const dir = attacker.facing;
+  const dir = knockbackDirection(attacker, defender);
   const defenderX = clampX(defender.x + dir * distance, params);
   const shortfall = distance - Math.abs(defenderX - defender.x);
   const attackerX = clampX(attacker.x - dir * shortfall, params);

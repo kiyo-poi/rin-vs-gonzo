@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { params, proto } from '../src/data/data';
-import { canRematch, createMatch, stepMatch, timerSeconds, type Match } from '../src/logic/match';
+import { createBattle } from '../src/logic/battle';
+import { canRematch, createMatch, judgeRound, stepMatch, timerSeconds, type Match } from '../src/logic/match';
 import type { CharacterData, InputFrame, Params } from '../src/logic/types';
 import { inputOf, NONE } from './helpers';
 
@@ -14,7 +15,6 @@ const glass: CharacterData = { ...proto, stats: { ...proto.stats, health: 30 } }
 
 const P1_PUNCH: Pair = [inputOf([], ['punch']), NONE];
 const P2_PUNCH: Pair = [NONE, inputOf([], ['punch'])];
-const BOTH_PUNCH: Pair = [inputOf([], ['punch']), inputOf([], ['punch'])];
 
 function stepTimes(m: Match, n: number, inputs: Pair, p: Params): Match {
   let cur = m;
@@ -102,10 +102,10 @@ describe('ラウンドの決着', () => {
     expect(m.lastResult).toEqual({ reason: 'timeUp', winner: 1 });
   });
 
-  it('同時KO：両者に1勝', () => {
-    const m = playRound(createMatch([glass, glass], quick, XS), BOTH_PUNCH);
-    expect(m.lastResult).toEqual({ reason: 'ko', winner: null });
-    expect(m.wins).toEqual([1, 1]);
+  it('同時KO：両者の体力が 0 なら勝者なしの KO', () => {
+    const b = createBattle([glass, glass], quick, XS);
+    const both0 = { ...b, fighters: b.fighters.map((f) => ({ ...f, health: 0 })) as typeof b.fighters };
+    expect(judgeRound(both0, 10)).toEqual({ reason: 'ko', winner: null });
   });
 
   it('決着表示のあとは次のラウンド。体力・位置・残り時間は戻り、勝ち数は残る', () => {
@@ -135,7 +135,7 @@ describe('試合の決着', () => {
     let m = createMatch([glass, glass], quick, XS);
     m = playAndFinish(m, P1_PUNCH);
     m = playAndFinish(m, P2_PUNCH);
-    m = playAndFinish(m, BOTH_PUNCH);
+    m = playAndFinish(m, IDLE);
     expect(m.wins).toEqual([2, 2]);
     expect(m.phase).toBe('intro');
     expect(m.round).toBe(4);
@@ -146,7 +146,7 @@ describe('試合の決着', () => {
 
   it('5ラウンドで決まらなければ引き分け', () => {
     let m = createMatch([glass, glass], quick, XS);
-    for (let i = 0; i < 5; i++) m = playAndFinish(m, BOTH_PUNCH);
+    for (let i = 0; i < 5; i++) m = playAndFinish(m, IDLE);
     expect(m.round).toBe(5);
     expect(m.phase).toBe('matchEnd');
     expect(m.winner).toBeNull();

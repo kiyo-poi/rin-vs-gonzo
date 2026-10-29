@@ -94,8 +94,9 @@ describe('ガード', () => {
 });
 
 describe('同時', () => {
-  it('同じフレームに当て合えば両方の体力が減る（相打ちのルールは M3）', () => {
+  it('同じフレームに当て合えば相打ちになり、ダメージは入らない', () => {
     const t = play([400, 500], 5, (i) => (i === 1 ? [inputOf([], ['punch']), inputOf([], ['punch'])] : [NONE, NONE]));
-    expect(t[4].fighters.map((f) => f.health)).toEqual([820, 820]);
+    expect(t[4].events).toEqual([{ type: 'clash' }]);
+    expect(t[4].fighters.map((f) => f.health)).toEqual([850, 850]);
   });
 });

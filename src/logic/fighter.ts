@@ -35,6 +35,12 @@ export function isHittable(f: Fighter): boolean {
   return f.state.name !== 'knockdown' && f.state.name !== 'airHit' && f.invincible <= 0;
 }
 
+/** 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技だけ消えて、そのまま落ち続ける（used は残す） */
+export function clashRecoil(f: Fighter, params: Params): Fighter {
+  if (f.state.name === 'air') return { ...f, moveHasHit: true, state: { ...f.state, attack: null } };
+  return { ...f, moveHasHit: true, state: { name: 'recoil', frame: 0, duration: params.clashRecoil } };
+}
+
 /** 食らいの箱（ステージ座標）。しゃがみ・空中・それ以外（立ち）で使い分ける */
 export function hurtBoxes(f: Fighter): Box[] {
   const hurt = f.char.boxes.hurt;
@@ -75,7 +81,8 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
       break;
     }
     case 'hitstun':
-    case 'blockstun': {
+    case 'blockstun':
+    case 'recoil': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
       break;
     }

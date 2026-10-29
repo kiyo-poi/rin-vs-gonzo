@@ -80,6 +80,8 @@ export interface Params {
   pushRate: number;
   /** ジャンプの踏み込み（飛び上がる前の地上の時間） */
   jumpSquatFrames: number;
+  /** 相打ちで弾かれて動けない時間 F（当たった次のフレームが1F目） */
+  clashRecoil: number;
   /** ダウンしている時間 F（当たった次のフレームが1F目） */
   knockdownFrames: number;
   /** 起き上がってからの無敵 F */
@@ -136,6 +138,8 @@ export type FighterState =
   | { name: 'landing'; frame: number; duration: number }
   | { name: 'attack'; frame: number; move: MoveSlot }
   | { name: 'hitstun' | 'blockstun'; frame: number; duration: number }
+  /** 相打ちで弾かれた（食らいの箱は立ち） */
+  | { name: 'recoil'; frame: number; duration: number }
   /** ダウン（frame 0 で入り、duration を超えたフレームで起き上がる） */
   | { name: 'knockdown'; frame: number; duration: number }
   /** 空中で食らって落下中（着地したフレームからダウン） */
