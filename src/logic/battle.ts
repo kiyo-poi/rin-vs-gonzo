@@ -1,5 +1,5 @@
 import { overlaps } from './boxes';
-import { activeHitbox, createFighter, hurtBoxes, stepFighter } from './fighter';
+import { activeHitbox, clampX, createFighter, hurtBoxes, stepFighter } from './fighter';
 import type { CharacterData, Fighter, HitData, InputFrame, Params } from './types';
 
 export interface BattleEvent {
@@ -61,6 +61,10 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       };
       events.push({ type: 'hit', attacker, damage: result.hit.damage });
     }
+    const distance = weight.knockback * (result.blocked ? params.blockKnockbackRate : 1);
+    const [pushedAttacker, pushedDefender] = applyKnockback(fighters[attacker], fighters[defender], distance, params);
+    fighters[attacker] = pushedAttacker;
+    fighters[defender] = pushedDefender;
   });
 
   return { frame: b.frame + 1, fighters, events };
@@ -73,4 +77,13 @@ function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; bl
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
   const blocked = defender.state.name === 'guard' || defender.state.name === 'blockstun';
   return { hit: active.hit, blocked };
+}
+
+/** 守る側を攻撃側の向きへ押す。画面端で下がれない分は、攻撃側が逆へ下がる（画面端で永久に殴り続けられないように） */
+function applyKnockback(attacker: Fighter, defender: Fighter, distance: number, params: Params): [Fighter, Fighter] {
+  const dir = attacker.facing;
+  const defenderX = clampX(defender.x + dir * distance, params);
+  const shortfall = distance - Math.abs(defenderX - defender.x);
+  const attackerX = clampX(attacker.x - dir * shortfall, params);
+  return [{ ...attacker, x: attackerX }, { ...defender, x: defenderX }];
 }

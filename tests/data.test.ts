@@ -17,7 +17,11 @@ describe('データ', () => {
   });
 
   it('のけぞり・ガード硬直（軽）は 14F / 10F', () => {
-    expect(params.weights.light).toEqual({ hitstun: 14, blockstun: 10 });
+    expect(params.weights.light).toEqual({ hitstun: 14, blockstun: 10, knockback: 20 });
+    expect(params.weights.medium).toEqual({ hitstun: 18, blockstun: 13, knockback: 35 });
+    expect(params.weights.heavy).toEqual({ hitstun: 24, blockstun: 17, knockback: 60 });
+    expect(params.blockKnockbackRate).toBe(1.2);
+    expect(params.stage.width).toBe(1920);
   });
 
   it('2P のパンチはテンキー4と J の両方', () => {

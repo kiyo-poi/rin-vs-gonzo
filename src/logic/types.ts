@@ -63,7 +63,9 @@ export interface CharacterData {
 }
 
 export interface Params {
-  weights: Record<Weight, { hitstun: number; blockstun: number }>;
+  weights: Record<Weight, { hitstun: number; blockstun: number; knockback: number }>;
+  /** ガードした時のノックバックの倍率 */
+  blockKnockbackRate: number;
   /** ジャンプの踏み込み（飛び上がる前の地上の時間） */
   jumpSquatFrames: number;
   stage: { width: number; edgeMargin: number; startDistance: number };

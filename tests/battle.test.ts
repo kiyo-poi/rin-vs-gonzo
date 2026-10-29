@@ -22,7 +22,7 @@ const p1PunchAtFirst: Inputs = (i) => [i === 1 ? inputOf([], ['punch']) : NONE, 
 describe('createBattle', () => {
   it('ステージ中央から左右に離れて、向かい合って始まる', () => {
     const b = createBattle([proto, proto], params);
-    expect(b.fighters.map((f) => f.x)).toEqual([400, 880]);
+    expect(b.fighters.map((f) => f.x)).toEqual([720, 1200]);
     expect(b.fighters.map((f) => f.facing)).toEqual([1, -1]);
   });
 });

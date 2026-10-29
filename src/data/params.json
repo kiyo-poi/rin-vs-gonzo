@@ -1,10 +1,11 @@
 {
   "weights": {
-    "light": { "hitstun": 14, "blockstun": 10 },
-    "medium": { "hitstun": 18, "blockstun": 13 },
-    "heavy": { "hitstun": 24, "blockstun": 17 }
+    "light": { "hitstun": 14, "blockstun": 10, "knockback": 20 },
+    "medium": { "hitstun": 18, "blockstun": 13, "knockback": 35 },
+    "heavy": { "hitstun": 24, "blockstun": 17, "knockback": 60 }
   },
+  "blockKnockbackRate": 1.2,
   "jumpSquatFrames": 3,
-  "stage": { "width": 1280, "edgeMargin": 60, "startDistance": 480 },
+  "stage": { "width": 1920, "edgeMargin": 60, "startDistance": 480 },
   "render": { "groundY": 620 }
 }
