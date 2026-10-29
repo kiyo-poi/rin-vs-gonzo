@@ -10,6 +10,7 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     health: char.stats.health,
     state: { name: 'idle', frame: 1 },
     moveHasHit: false,
+    invincible: 0,
   };
 }
 
@@ -29,6 +30,11 @@ export function activeHitbox(f: Fighter): { box: Box; hit: HitData } | null {
   return { box: toWorld(hit.box, f), hit };
 }
 
+/** 攻撃を食らう状態か。ダウン・落下中と、起き上がり無敵の間は当たらない */
+export function isHittable(f: Fighter): boolean {
+  return f.state.name !== 'knockdown' && f.state.name !== 'airHit' && f.invincible <= 0;
+}
+
 /** 食らいの箱（ステージ座標）。しゃがみ・空中・それ以外（立ち）で使い分ける */
 export function hurtBoxes(f: Fighter): Box[] {
   const hurt = f.char.boxes.hurt;
@@ -36,7 +42,7 @@ export function hurtBoxes(f: Fighter): Box[] {
   const posture: Posture =
     st.name === 'attack' ? f.char.moves[st.move].posture
     : st.name === 'crouch' || (st.name === 'guard' && st.crouch) ? 'crouch'
-    : st.name === 'air' ? 'air'
+    : st.name === 'air' || st.name === 'airHit' ? 'air'
     : 'stand';
   const local = hurt[posture];
   return local.map((box) => toWorld(box, f));
@@ -55,7 +61,8 @@ export function jumpY(frame: number, total: number, height: number): number {
 }
 
 /** 1フレーム進める */
-export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
+export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
+  const f: Fighter = { ...prev, invincible: Math.max(0, prev.invincible - 1) };
   const st = f.state;
   switch (st.name) {
     case 'attack': {
@@ -71,6 +78,17 @@ export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, pa
     case 'blockstun': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
       break;
+    }
+    case 'knockdown': {
+      if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      // 起き上がったフレームから動け、そのフレームから無敵が始まる
+      return { ...stepFree(f, input, opponentX, params), invincible: params.wakeupInvincible };
+    }
+    case 'airHit': {
+      const y = f.y - params.airHitFallSpeed;
+      if (y > 0) return { ...f, y, state: { ...st, frame: st.frame + 1 } };
+      // 地面に着いたフレームからダウン
+      return { ...f, y: 0, moveHasHit: false, state: { name: 'knockdown', frame: 1, duration: params.knockdownFrames } };
     }
     case 'jumpSquat': {
       if (st.frame + 1 <= params.jumpSquatFrames) return { ...f, state: { ...st, frame: st.frame + 1 } };

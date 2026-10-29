@@ -1,7 +1,7 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, createFighter, faceOpponent, hurtBoxes, stepFighter } from './fighter';
+import { activeHitbox, clampX, createFighter, faceOpponent, hurtBoxes, isHittable, stepFighter } from './fighter';
 import { limitDistance, resolvePush } from './position';
-import type { CharacterData, Fighter, HitData, InputFrame, Params } from './types';
+import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
 export interface BattleEvent {
   type: 'hit' | 'block';
@@ -57,13 +57,13 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       };
       events.push({ type: 'block', attacker, damage: 0 });
     } else {
-      fighters[defender] = {
-        ...fighters[defender],
-        health: Math.max(0, fighters[defender].health - result.hit.damage),
-        // M1 は空中で食らったら即座に地面へ戻す（「落下して着地でダウン」になるのは M3）
-        y: 0,
-        state: { name: 'hitstun', frame: 0, duration: weight.hitstun },
-      };
+      const d = fighters[defender];
+      // 空中で食らったら落下（y はそのまま）。地上で knockdown の技ならダウン。それ以外はのけぞり
+      const state: FighterState =
+        d.state.name === 'air' ? { name: 'airHit', frame: 0 }
+        : result.hit.knockdown ? { name: 'knockdown', frame: 0, duration: params.knockdownFrames }
+        : { name: 'hitstun', frame: 0, duration: weight.hitstun };
+      fighters[defender] = { ...d, health: Math.max(0, d.health - result.hit.damage), state };
       events.push({ type: 'hit', attacker, damage: result.hit.damage });
     }
     const distance = weight.knockback * (result.blocked ? params.blockKnockbackRate : 1);
@@ -78,7 +78,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
 /** 攻撃側の攻撃の箱が、守る側の食らいの箱に重なったか。重なったらガードできたかも返す */
 function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; blocked: boolean } | null {
   const active = activeHitbox(attacker);
-  if (!active) return null;
+  if (!active || !isHittable(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
   const blocked = defender.state.name === 'guard' || defender.state.name === 'blockstun';
   return { hit: active.hit, blocked };

@@ -3,7 +3,7 @@ import type { Fighter, Params } from './types';
 
 /** 押し合うのは地上にいる時だけ（空中なら重なってよい。相手を飛び越えられるように） */
 function onGround(f: Fighter): boolean {
-  return f.state.name !== 'air';
+  return f.state.name !== 'air' && f.state.name !== 'airHit';
 }
 
 /**

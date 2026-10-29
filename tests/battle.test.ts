@@ -66,17 +66,17 @@ describe('2P の攻撃', () => {
 });
 
 describe('空中で食らう', () => {
-  it('空中の相手に当てたら、のけぞると同時に地面へ戻り、浮いたままにならない', () => {
-    const t = play([400, 500], 40, (i) => [
+  it('空中の相手に当てたら、y はそのまま落下（airHit）し、着地したらダウンになる', () => {
+    const t = play([400, 500], 60, (i) => [
       i === 3 ? inputOf([], ['punch']) : NONE,
       i === 1 ? inputOf([], ['up']) : NONE,
     ]);
     const hitIndex = t.findIndex((b) => b.events.some((e) => e.type === 'hit'));
     expect(hitIndex).toBeGreaterThanOrEqual(0);
-    expect(t[hitIndex].fighters[1].state.name).toBe('hitstun');
-    expect(t[hitIndex].fighters[1].y).toBe(0);
-    expect(t[hitIndex + 20].fighters[1].state.name).not.toBe('air');
-    expect(t[hitIndex + 20].fighters[1].y).toBe(0);
+    expect(t[hitIndex].fighters[1].state).toEqual({ name: 'airHit', frame: 0 });
+    expect(t[hitIndex].fighters[1].y).toBeGreaterThan(0);
+    const landed = t.slice(hitIndex).find((b) => b.fighters[1].state.name === 'knockdown');
+    expect(landed?.fighters[1].y).toBe(0);
   });
 });
 

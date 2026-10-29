@@ -80,6 +80,12 @@ export interface Params {
   pushRate: number;
   /** ジャンプの踏み込み（飛び上がる前の地上の時間） */
   jumpSquatFrames: number;
+  /** ダウンしている時間 F（当たった次のフレームが1F目） */
+  knockdownFrames: number;
+  /** 起き上がってからの無敵 F */
+  wakeupInvincible: number;
+  /** 空中で食らってから落ちる速さ px/F */
+  airHitFallSpeed: number;
   /** 空中技を出して着地した時の隙 F（技ごとの landingRecovery があればそちらを使う） */
   airLandingRecovery: number;
   stage: { width: number; edgeMargin: number; startDistance: number };
@@ -129,7 +135,11 @@ export type FighterState =
     }
   | { name: 'landing'; frame: number; duration: number }
   | { name: 'attack'; frame: number; move: MoveSlot }
-  | { name: 'hitstun' | 'blockstun'; frame: number; duration: number };
+  | { name: 'hitstun' | 'blockstun'; frame: number; duration: number }
+  /** ダウン（frame 0 で入り、duration を超えたフレームで起き上がる） */
+  | { name: 'knockdown'; frame: number; duration: number }
+  /** 空中で食らって落下中（着地したフレームからダウン） */
+  | { name: 'airHit'; frame: number };
 
 export type FighterStateName = FighterState['name'];
 
@@ -143,4 +153,6 @@ export interface Fighter {
   state: FighterState;
   /** 今出している技がもう当たったか（1つの技は相手に1回だけ当たる） */
   moveHasHit: boolean;
+  /** 起き上がり無敵の残りフレーム（0 なら無敵ではない） */
+  invincible: number;
 }
