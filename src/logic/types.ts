@@ -74,6 +74,18 @@ export interface Params {
   jumpSquatFrames: number;
   stage: { width: number; edgeMargin: number; startDistance: number };
   screen: { width: number };
+  round: {
+    /** 1ラウンドの長さ（99秒） */
+    timeFrames: number;
+    /** ラウンド開始表示の長さ */
+    introFrames: number;
+    /** 決着表示の長さ */
+    endFrames: number;
+    /** 試合に勝つのに必要なラウンド数 */
+    winsToWin: number;
+    /** 最大ラウンド数 */
+    maxRounds: number;
+  };
   render: { groundY: number };
 }
 

@@ -27,6 +27,10 @@ describe('データ', () => {
     expect(proto.stats.pushWidth).toBe(60);
   });
 
+  it('ラウンドの値は 01・06 のとおり', () => {
+    expect(params.round).toEqual({ timeFrames: 5940, introFrames: 120, endFrames: 90, winsToWin: 2, maxRounds: 5 });
+  });
+
   it('2P のパンチはテンキー4と J の両方', () => {
     expect(controls.p2.punch).toEqual(['Numpad4', 'KeyJ']);
     expect(controls.p1.punch).toEqual(['KeyF']);
