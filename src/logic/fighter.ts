@@ -20,9 +20,11 @@ export function moveTotalFrames(move: MoveData): number {
 /** 攻撃の箱（ステージ座標）。持続中で、まだ当たっていない時だけ返す */
 export function activeHitbox(f: Fighter): { box: Box; hit: HitData } | null {
   const st = f.state;
-  if (st.name !== 'attack' || f.moveHasHit) return null;
-  const move = f.char.moves[st.move];
-  if (st.frame <= move.startup || st.frame > move.startup + move.active) return null;
+  if (f.moveHasHit) return null;
+  const cur = st.name === 'attack' ? st : st.name === 'air' ? st.attack : null;
+  if (!cur) return null;
+  const move = f.char.moves[cur.move];
+  if (cur.frame <= move.startup || cur.frame > move.startup + move.active) return null;
   const hit = move.hits[0];
   return { box: toWorld(hit.box, f), hit };
 }
@@ -61,6 +63,10 @@ export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, pa
       if (st.frame + 1 <= moveTotalFrames(f.char.moves[st.move])) return { ...f, state: { ...st, frame: st.frame + 1 } };
       break;
     }
+    case 'landing': {
+      if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      break;
+    }
     case 'hitstun':
     case 'blockstun': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
@@ -73,21 +79,39 @@ export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, pa
         ...f,
         x: clampX(f.x + st.dir * jumpForwardSpeed, params),
         y: jumpY(1, jumpAirFrames, jumpHeight),
-        state: { name: 'air', frame: 1, dir: st.dir },
+        state: { name: 'air', frame: 1, dir: st.dir, attack: null, used: null },
       };
     }
     case 'air': {
       const { jumpAirFrames, jumpHeight, jumpForwardSpeed } = f.char.stats;
       const frame = st.frame + 1;
       if (frame < jumpAirFrames) {
+        let attack = st.attack;
+        let used = st.used;
+        let moveHasHit = f.moveHasHit;
+        if (attack) {
+          attack = attack.frame + 1 <= moveTotalFrames(f.char.moves[attack.move]) ? { ...attack, frame: attack.frame + 1 } : null;
+        } else if (!used && (input.pressed.kick || input.pressed.punch)) {
+          // 同じフレームに押されたらキックを優先する
+          const move = input.pressed.kick ? 'airKick' : 'airPunch';
+          attack = { move, frame: 1 };
+          used = move;
+          moveHasHit = false;
+        }
         return {
           ...f,
+          moveHasHit,
           x: clampX(f.x + st.dir * jumpForwardSpeed, params),
           y: jumpY(frame, jumpAirFrames, jumpHeight),
-          state: { name: 'air', frame, dir: st.dir },
+          state: { name: 'air', frame, dir: st.dir, attack, used },
         };
       }
-      // 着地したフレームは、そのまま自由に動ける（入力を受け付け、向きも更新する）
+      // 空中技を出していたら着地の隙（このフレームは入力を受け付けない）
+      if (st.used) {
+        const duration = f.char.moves[st.used].landingRecovery ?? params.airLandingRecovery;
+        return { ...f, y: 0, moveHasHit: false, state: { name: 'landing', frame: 1, duration } };
+      }
+      // 出していなければ、着地したフレームからそのまま自由に動ける（入力を受け付け、向きも更新する）
       return stepFree({ ...f, y: 0, state: { name: 'idle', frame: 0 } }, input, opponentX, params);
     }
   }

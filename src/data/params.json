@@ -7,6 +7,7 @@
   "blockKnockbackRate": 1.2,
   "pushRate": 0.5,
   "jumpSquatFrames": 3,
+  "airLandingRecovery": 4,
   "stage": { "width": 1920, "edgeMargin": 60, "startDistance": 480 },
   "screen": { "width": 1280 },
   "round": { "timeFrames": 5940, "introFrames": 120, "endFrames": 90, "winsToWin": 2, "maxRounds": 5 },

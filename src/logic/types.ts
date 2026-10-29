@@ -80,6 +80,8 @@ export interface Params {
   pushRate: number;
   /** ジャンプの踏み込み（飛び上がる前の地上の時間） */
   jumpSquatFrames: number;
+  /** 空中技を出して着地した時の隙 F（技ごとの landingRecovery があればそちらを使う） */
+  airLandingRecovery: number;
   stage: { width: number; edgeMargin: number; startDistance: number };
   screen: { width: number };
   round: {
@@ -116,7 +118,16 @@ export type FighterState =
   | { name: FreeStateName; frame: number }
   | { name: 'guard'; frame: number; crouch: boolean }
   | { name: 'jumpSquat'; frame: number; dir: -1 | 0 | 1 }
-  | { name: 'air'; frame: number; dir: -1 | 0 | 1 }
+  | {
+      name: 'air';
+      frame: number;
+      dir: -1 | 0 | 1;
+      /** 出している空中技（frame は技に入ってからのフレーム数） */
+      attack: { move: MoveSlot; frame: number } | null;
+      /** このジャンプで出した空中技（1ジャンプに1回だけ出せる） */
+      used: MoveSlot | null;
+    }
+  | { name: 'landing'; frame: number; duration: number }
   | { name: 'attack'; frame: number; move: MoveSlot }
   | { name: 'hitstun' | 'blockstun'; frame: number; duration: number };
 
