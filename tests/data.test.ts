@@ -22,6 +22,9 @@ describe('データ', () => {
     expect(params.weights.heavy).toEqual({ hitstun: 24, blockstun: 17, knockback: 60 });
     expect(params.blockKnockbackRate).toBe(1.2);
     expect(params.stage.width).toBe(1920);
+    expect(params.pushRate).toBe(0.5);
+    expect(params.screen.width).toBe(1280);
+    expect(proto.stats.pushWidth).toBe(60);
   });
 
   it('2P のパンチはテンキー4と J の両方', () => {

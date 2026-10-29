@@ -55,6 +55,8 @@ export interface CharacterData {
     jumpHeight: number;
     /** 前・後ろジャンプの横の速さ px/F */
     jumpForwardSpeed: number;
+    /** 押し合いの幅 px（2人の足元の中心は、2人の幅の平均より近づけない） */
+    pushWidth: number;
   };
   boxes: {
     hurt: { stand: Box[]; crouch: Box[]; air: Box[] };
@@ -66,9 +68,12 @@ export interface Params {
   weights: Record<Weight, { hitstun: number; blockstun: number; knockback: number }>;
   /** ガードした時のノックバックの倍率 */
   blockKnockbackRate: number;
+  /** 歩いて押した時、押された側が動く割合（重なった分に対して） */
+  pushRate: number;
   /** ジャンプの踏み込み（飛び上がる前の地上の時間） */
   jumpSquatFrames: number;
   stage: { width: number; edgeMargin: number; startDistance: number };
+  screen: { width: number };
   render: { groundY: number };
 }
 

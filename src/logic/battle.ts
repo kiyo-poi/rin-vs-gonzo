@@ -1,5 +1,6 @@
 import { overlaps } from './boxes';
 import { activeHitbox, clampX, createFighter, hurtBoxes, stepFighter } from './fighter';
+import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, HitData, InputFrame, Params } from './types';
 
 export interface BattleEvent {
@@ -29,10 +30,12 @@ export function createBattle(chars: [CharacterData, CharacterData], params: Para
 /** 2人を1フレーム進める */
 export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: Params): Battle {
   const [before0, before1] = b.fighters;
-  const moved: [Fighter, Fighter] = [
+  const stepped: [Fighter, Fighter] = [
     stepFighter(before0, inputs[0], before1.x, params),
     stepFighter(before1, inputs[1], before0.x, params),
   ];
+  // 判定の前に、押し合い → 2人の距離の上限 の順で位置を直す（08_architecture.md 2.4 の5番）
+  const moved = limitDistance(resolvePush(stepped, b.fighters, params), b.fighters, params);
 
   // 両者とも「動かしたあとの同じ状態」で調べる（1P が先に処理されて有利にならないように）
   const results = [resolveAttack(moved[0], moved[1]), resolveAttack(moved[1], moved[0])];

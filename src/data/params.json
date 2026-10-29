@@ -5,7 +5,9 @@
     "heavy": { "hitstun": 24, "blockstun": 17, "knockback": 60 }
   },
   "blockKnockbackRate": 1.2,
+  "pushRate": 0.5,
   "jumpSquatFrames": 3,
   "stage": { "width": 1920, "edgeMargin": 60, "startDistance": 480 },
+  "screen": { "width": 1280 },
   "render": { "groundY": 620 }
 }
