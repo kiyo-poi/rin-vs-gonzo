@@ -62,13 +62,25 @@ export function stepFighter(f: Fighter, input: InputFrame, opponentX: number, pa
     }
     case 'jumpSquat': {
       if (st.frame + 1 <= params.jumpSquatFrames) return { ...f, state: { ...st, frame: st.frame + 1 } };
-      const { jumpAirFrames, jumpHeight } = f.char.stats;
-      return { ...f, y: jumpY(1, jumpAirFrames, jumpHeight), state: { name: 'air', frame: 1 } };
+      const { jumpAirFrames, jumpHeight, jumpForwardSpeed } = f.char.stats;
+      return {
+        ...f,
+        x: clampX(f.x + st.dir * jumpForwardSpeed, params),
+        y: jumpY(1, jumpAirFrames, jumpHeight),
+        state: { name: 'air', frame: 1, dir: st.dir },
+      };
     }
     case 'air': {
-      const { jumpAirFrames, jumpHeight } = f.char.stats;
+      const { jumpAirFrames, jumpHeight, jumpForwardSpeed } = f.char.stats;
       const frame = st.frame + 1;
-      if (frame < jumpAirFrames) return { ...f, y: jumpY(frame, jumpAirFrames, jumpHeight), state: { name: 'air', frame } };
+      if (frame < jumpAirFrames) {
+        return {
+          ...f,
+          x: clampX(f.x + st.dir * jumpForwardSpeed, params),
+          y: jumpY(frame, jumpAirFrames, jumpHeight),
+          state: { name: 'air', frame, dir: st.dir },
+        };
+      }
       // 着地したフレームは、そのまま自由に動ける（入力を受け付け、向きも更新する）
       return stepFree({ ...f, y: 0, state: { name: 'idle', frame: 0 } }, input, opponentX, params);
     }
@@ -93,7 +105,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   // 同じフレームに押されたらキックを優先する（08_architecture.md の優先順位）
   if (input.pressed.kick) return { ...base, state: { name: 'attack', frame: 1, move: 'kick' } };
   if (input.pressed.punch) return { ...base, state: { name: 'attack', frame: 1, move: 'punch' } };
-  if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1 } };
+  if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1, dir: horizontal as -1 | 0 | 1 } };
   if (held.guard) return enter('guard');
   if (held.down) return enter('crouch');
   if (horizontal !== 0) {

@@ -53,6 +53,8 @@ export interface CharacterData {
     jumpAirFrames: number;
     /** ジャンプの高さ px */
     jumpHeight: number;
+    /** 前・後ろジャンプの横の速さ px/F */
+    jumpForwardSpeed: number;
   };
   boxes: {
     hurt: { stand: Box[]; crouch: Box[]; air: Box[] };
@@ -85,8 +87,8 @@ export type FreeStateName = 'idle' | 'walkForward' | 'walkBack' | 'crouch' | 'gu
  */
 export type FighterState =
   | { name: FreeStateName; frame: number }
-  | { name: 'jumpSquat'; frame: number }
-  | { name: 'air'; frame: number }
+  | { name: 'jumpSquat'; frame: number; dir: -1 | 0 | 1 }
+  | { name: 'air'; frame: number; dir: -1 | 0 | 1 }
   | { name: 'attack'; frame: number; move: MoveSlot }
   | { name: 'hitstun' | 'blockstun'; frame: number; duration: number };
 
