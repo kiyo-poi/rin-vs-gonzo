@@ -1,5 +1,5 @@
 import { activeHitbox, hurtBoxes } from '../logic/fighter';
-import { timerSeconds, type Match } from '../logic/match';
+import { canRematch, timerSeconds, type Match } from '../logic/match';
 import type { Box, Fighter, Params } from '../logic/types';
 import { cameraX } from './camera';
 import { phaseMessage } from './hud';
@@ -94,7 +94,7 @@ function drawHud(ctx: CanvasRenderingContext2D, match: Match, params: Params, wi
     ctx.font = 'bold 72px sans-serif';
     ctx.fillText(message, width / 2, 300);
   }
-  if (match.phase === 'matchEnd') {
+  if (canRematch(match, params)) {
     ctx.font = '24px sans-serif';
     ctx.fillText('パンチでもう一度', width / 2, 360);
   }

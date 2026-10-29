@@ -114,3 +114,8 @@ function nextRound(m: Match, params: Params): Match {
     timeLeft: params.round.timeFrames,
   };
 }
+
+/** 再戦してよいか。勝者の表示を最低これだけ（endFrames）見せる */
+export function canRematch(m: Match, params: Params): boolean {
+  return m.phase === 'matchEnd' && m.phaseFrame >= params.round.endFrames;
+}

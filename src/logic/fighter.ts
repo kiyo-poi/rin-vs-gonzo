@@ -114,3 +114,22 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   }
   return enter('idle');
 }
+
+/**
+ * 押し合いのあとの位置で、相手の方を向き直す（08_architecture.md 2.4 の6番）。
+ * 振り向けるのは自由に動ける状態と、このフレームに技・ジャンプ準備を始めた時だけ。
+ * 空中・技の途中・のけぞり・ガード硬直では向きを変えない。同じ位置なら今の向きのまま
+ */
+export function faceOpponent(f: Fighter, opponentX: number): Fighter {
+  const st = f.state;
+  const canTurn =
+    st.name === 'idle' ||
+    st.name === 'walkForward' ||
+    st.name === 'walkBack' ||
+    st.name === 'crouch' ||
+    st.name === 'guard' ||
+    ((st.name === 'attack' || st.name === 'jumpSquat') && st.frame === 1);
+  if (!canTurn || opponentX === f.x) return f;
+  const facing: 1 | -1 = opponentX > f.x ? 1 : -1;
+  return facing === f.facing ? f : { ...f, facing };
+}

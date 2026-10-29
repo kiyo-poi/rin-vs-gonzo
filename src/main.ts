@@ -2,7 +2,7 @@ import { createFixedStep } from './core/loop';
 import { controls, params, proto } from './data/data';
 import { allCodes, buildInputFrame, emptyHeld, heldFromKeys, keysFor } from './input/inputFrame';
 import { KeyboardState } from './input/keyboard';
-import { createMatch, stepMatch, type Match } from './logic/match';
+import { canRematch, createMatch, stepMatch, type Match } from './logic/match';
 import type { InputFrame } from './logic/types';
 import { drawFrame } from './render/render';
 
@@ -25,9 +25,9 @@ function tick(now: number): void {
     const held = [heldFromKeys(keys, controls.p1), heldFromKeys(keys, controls.p2)];
     const inputs: [InputFrame, InputFrame] = [buildInputFrame(held[0], prevHeld[0]), buildInputFrame(held[1], prevHeld[1])];
     prevHeld = held;
-    // 試合が終わったら、どちらかがパンチを押すと再戦（タイトルなどの画面の流れは M4）
-    if (match.phase === 'matchEnd') {
-      if (inputs[0].pressed.punch || inputs[1].pressed.punch) match = newMatch();
+    // 試合が終わったら、勝者を一定時間見せたあと、どちらかがパンチを押すと再戦（タイトルなどの画面の流れは M4）
+    if (canRematch(match, params) && (inputs[0].pressed.punch || inputs[1].pressed.punch)) {
+      match = newMatch();
     } else {
       match = stepMatch(match, inputs, params);
     }

@@ -1,5 +1,5 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, createFighter, hurtBoxes, stepFighter } from './fighter';
+import { activeHitbox, clampX, createFighter, faceOpponent, hurtBoxes, stepFighter } from './fighter';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, HitData, InputFrame, Params } from './types';
 
@@ -35,7 +35,9 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     stepFighter(before1, inputs[1], before0.x, params),
   ];
   // 判定の前に、押し合い → 2人の距離の上限 の順で位置を直す（08_architecture.md 2.4 の5番）
-  const moved = limitDistance(resolvePush(stepped, b.fighters, params), b.fighters, params);
+  const pushed = limitDistance(resolvePush(stepped, b.fighters, params), b.fighters, params);
+  // 押し合いで左右が入れ替わることがあるので、動かしたあとの位置で向きを決め直す（6番）
+  const moved: [Fighter, Fighter] = [faceOpponent(pushed[0], pushed[1].x), faceOpponent(pushed[1], pushed[0].x)];
 
   // 両者とも「動かしたあとの同じ状態」で調べる（1P が先に処理されて有利にならないように）
   const results = [resolveAttack(moved[0], moved[1]), resolveAttack(moved[1], moved[0])];
@@ -58,7 +60,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       fighters[defender] = {
         ...fighters[defender],
         health: Math.max(0, fighters[defender].health - result.hit.damage),
-        // M1 は空中で食らったら即座に地面へ戻す（落下してダウンする動きは M2/M3 で作る）
+        // M1 は空中で食らったら即座に地面へ戻す（「落下して着地でダウン」になるのは M3）
         y: 0,
         state: { name: 'hitstun', frame: 0, duration: weight.hitstun },
       };

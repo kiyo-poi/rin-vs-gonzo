@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { params, proto } from '../src/data/data';
-import { createMatch, stepMatch, timerSeconds, type Match } from '../src/logic/match';
+import { canRematch, createMatch, stepMatch, timerSeconds, type Match } from '../src/logic/match';
 import type { CharacterData, InputFrame, Params } from '../src/logic/types';
 import { inputOf, NONE } from './helpers';
 
@@ -159,5 +159,26 @@ describe('試合の決着', () => {
     const later = stepTimes(m, 10, P2_PUNCH, quick);
     expect(later.phase).toBe('matchEnd');
     expect(later.wins).toEqual([2, 0]);
+  });
+});
+
+describe('再戦できるか（勝者の表示を最低 endFrames だけ見せる）', () => {
+  it('試合終了の直後は再戦できず、endFrames 進めるとできる', () => {
+    let m = createMatch([glass, glass], quick, XS);
+    m = playAndFinish(m, P1_PUNCH);
+    m = playAndFinish(m, P1_PUNCH);
+    expect(m.phase).toBe('matchEnd');
+    expect(canRematch(m, quick)).toBe(false);
+    expect(canRematch(stepTimes(m, quick.round.endFrames - 1, IDLE, quick), quick)).toBe(false);
+    expect(canRematch(stepTimes(m, quick.round.endFrames, IDLE, quick), quick)).toBe(true);
+  });
+
+  it('試合終了以外の段階では再戦できない', () => {
+    const m = createMatch([glass, glass], quick, XS);
+    expect(canRematch(m, quick)).toBe(false);
+    expect(canRematch(stepTimes(m, 50, IDLE, quick), quick)).toBe(false);
+    const ended = playRound(m, P1_PUNCH);
+    expect(ended.phase).toBe('roundEnd');
+    expect(canRematch(stepTimes(ended, 1, IDLE, quick), quick)).toBe(false);
   });
 });

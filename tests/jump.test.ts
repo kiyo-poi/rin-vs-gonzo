@@ -57,7 +57,7 @@ describe('ジャンプ', () => {
     expect(f.state).toEqual({ name: 'attack', frame: 1, move: 'punch' });
   });
 
-  it('空中で → を押しても横に動かない（M1 は真上ジャンプだけ）', () => {
+  it('空中での入力では横に動かない', () => {
     let f = stepFighter(createFighter(proto, 400, 1), inputOf([], ['up']), 900, params);
     for (let i = 0; i < 10; i++) f = stepFighter(f, inputOf(['right']), 900, params);
     expect(f.x).toBe(400);
