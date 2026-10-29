@@ -106,7 +106,7 @@ export interface Controls {
 }
 
 /** 自由に動ける状態 */
-export type FreeStateName = 'idle' | 'walkForward' | 'walkBack' | 'crouch' | 'guard';
+export type FreeStateName = 'idle' | 'walkForward' | 'walkBack' | 'crouch';
 
 /**
  * キャラの状態。frame はこの状態に入ってからのフレーム数（入ったフレームが1）。
@@ -114,6 +114,7 @@ export type FreeStateName = 'idle' | 'walkForward' | 'walkBack' | 'crouch' | 'gu
  */
 export type FighterState =
   | { name: FreeStateName; frame: number }
+  | { name: 'guard'; frame: number; crouch: boolean }
   | { name: 'jumpSquat'; frame: number; dir: -1 | 0 | 1 }
   | { name: 'air'; frame: number; dir: -1 | 0 | 1 }
   | { name: 'attack'; frame: number; move: MoveSlot }

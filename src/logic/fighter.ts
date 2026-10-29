@@ -1,5 +1,5 @@
 import { toWorld } from './boxes';
-import type { Box, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, Params } from './types';
+import type { Box, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, Params, Posture } from './types';
 
 export function createFighter(char: CharacterData, x: number, facing: 1 | -1): Fighter {
   return {
@@ -30,7 +30,13 @@ export function activeHitbox(f: Fighter): { box: Box; hit: HitData } | null {
 /** 食らいの箱（ステージ座標）。しゃがみ・空中・それ以外（立ち）で使い分ける */
 export function hurtBoxes(f: Fighter): Box[] {
   const hurt = f.char.boxes.hurt;
-  const local = f.state.name === 'crouch' ? hurt.crouch : f.state.name === 'air' ? hurt.air : hurt.stand;
+  const st = f.state;
+  const posture: Posture =
+    st.name === 'attack' ? f.char.moves[st.move].posture
+    : st.name === 'crouch' || (st.name === 'guard' && st.crouch) ? 'crouch'
+    : st.name === 'air' ? 'air'
+    : 'stand';
+  const local = hurt[posture];
   return local.map((box) => toWorld(box, f));
 }
 
@@ -103,10 +109,12 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   });
 
   // 同じフレームに押されたらキックを優先する（08_architecture.md の優先順位）
-  if (input.pressed.kick) return { ...base, state: { name: 'attack', frame: 1, move: 'kick' } };
-  if (input.pressed.punch) return { ...base, state: { name: 'attack', frame: 1, move: 'punch' } };
+  if (input.pressed.kick) return { ...base, state: { name: 'attack', frame: 1, move: held.down ? 'crouchKick' : 'kick' } };
+  if (input.pressed.punch) return { ...base, state: { name: 'attack', frame: 1, move: held.down ? 'crouchPunch' : 'punch' } };
   if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1, dir: horizontal as -1 | 0 | 1 } };
-  if (held.guard) return enter('guard');
+  if (held.guard) {
+    return { ...base, state: { name: 'guard', frame: f.state.name === 'guard' ? f.state.frame + 1 : 1, crouch: held.down } };
+  }
   if (held.down) return enter('crouch');
   if (horizontal !== 0) {
     const x = clampX(base.x + horizontal * f.char.stats.walkSpeed, params);
