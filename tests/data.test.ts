@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { controls, params, proto } from '../src/data/data';
+import { characters, controls, gonzo, lin, params, proto } from '../src/data/data';
+import type { MoveSlot } from '../src/logic/types';
 import { inputOf } from './helpers';
 
 describe('データ', () => {
@@ -41,5 +42,39 @@ describe('データ', () => {
     expect(input.held.left && input.held.punch).toBe(true);
     expect(input.pressed.punch).toBe(true);
     expect(input.pressed.left).toBe(false);
+  });
+});
+
+const TABLE = {
+  lin: {
+    punch: [4, 2, 8, 30, 'light'], kick: [8, 3, 14, 50, 'medium'],
+    crouchPunch: [5, 3, 10, 30, 'light'], crouchKick: [9, 3, 18, 50, 'medium'],
+    airPunch: [6, 6, 8, 40, 'medium'], airKick: [7, 8, 10, 50, 'medium'],
+  },
+  gonzo: {
+    punch: [9, 3, 16, 70, 'medium'], kick: [13, 4, 20, 90, 'heavy'],
+    crouchPunch: [8, 4, 20, 80, 'medium'], crouchKick: [14, 4, 24, 100, 'heavy'],
+    airPunch: [9, 6, 12, 70, 'medium'], airKick: [10, 8, 18, 80, 'heavy'],
+  },
+} as const;
+
+describe('キャラデータ', () => {
+  it('全12技の発生・持続・硬直・ダメージ・重さが 03_moves.md のとおり', () => {
+    for (const [id, moves] of Object.entries(TABLE)) {
+      for (const [slot, [s, a, r, d, w]] of Object.entries(moves)) {
+        const m = characters[id].moves[slot as MoveSlot];
+        expect([m.startup, m.active, m.recovery, m.hits[0].damage, m.hits[0].weight], `${id}.${slot}`).toEqual([s, a, r, d, w]);
+      }
+    }
+  });
+
+  it('足払い・ローキック払いはダウン属性、ドロップキックは着地の隙 20F', () => {
+    expect(lin.moves.crouchKick.hits[0].knockdown).toBe(true);
+    expect(gonzo.moves.crouchKick.hits[0].knockdown).toBe(true);
+    expect(gonzo.moves.airKick.landingRecovery).toBe(20);
+  });
+
+  it('ゴンゾーの基本値は 03・06 のとおり', () => {
+    expect(gonzo.stats).toMatchObject({ health: 1150, walkSpeed: 3, jumpAirFrames: 46, jumpHeight: 170, jumpForwardSpeed: 4 });
   });
 });

@@ -26,21 +26,29 @@ export interface HitData {
   damage: number;
   weight: Weight;
   box: Box;
+  /** 当たるとダウンさせる（足払いなど） */
+  knockdown?: boolean;
 }
+
+/** 技を出す時の姿勢 */
+export type Posture = 'stand' | 'crouch' | 'air';
 
 export interface MoveData {
   name: string;
+  posture: Posture;
   /** 発生 */
   startup: number;
   /** 持続 */
   active: number;
   /** 硬直 */
   recovery: number;
+  /** 空中技の着地の隙 F。省略時は共通値 */
+  landingRecovery?: number;
   hits: HitData[];
 }
 
-/** 技を出すボタンの枠（M3 でしゃがみ技・掴み・必殺などが増える） */
-export type MoveSlot = 'punch' | 'kick';
+/** 技を出すボタンの枠（掴み・必殺などは M3b 以降） */
+export type MoveSlot = 'punch' | 'kick' | 'crouchPunch' | 'crouchKick' | 'airPunch' | 'airKick';
 
 export interface CharacterData {
   id: string;

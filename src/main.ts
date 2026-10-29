@@ -1,5 +1,5 @@
 import { createFixedStep } from './core/loop';
-import { controls, params, proto } from './data/data';
+import { controls, gonzo, lin, params } from './data/data';
 import { allCodes, buildInputFrame, emptyHeld, heldFromKeys, keysFor } from './input/inputFrame';
 import { KeyboardState } from './input/keyboard';
 import { canRematch, createMatch, stepMatch, type Match } from './logic/match';
@@ -13,7 +13,7 @@ if (!ctx) throw new Error('Canvas 2D が使えません');
 const keyboard = new KeyboardState(allCodes(controls));
 keyboard.attach(window);
 
-const newMatch = (): Match => createMatch([proto, proto], params);
+const newMatch = (): Match => createMatch([lin, gonzo], params);
 let match = newMatch();
 let prevHeld = [emptyHeld(), emptyHeld()];
 const fixedStep = createFixedStep();

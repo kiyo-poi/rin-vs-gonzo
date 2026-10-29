@@ -1,0 +1,157 @@
+{
+  "id": "lin",
+  "name": "リン",
+  "stats": {
+    "health": 850,
+    "walkSpeed": 5,
+    "jumpAirFrames": 36,
+    "jumpHeight": 200,
+    "jumpForwardSpeed": 6,
+    "pushWidth": 60
+  },
+  "boxes": {
+    "hurt": {
+      "stand": [
+        {
+          "x": -30,
+          "y": 0,
+          "w": 60,
+          "h": 160
+        }
+      ],
+      "crouch": [
+        {
+          "x": -30,
+          "y": 0,
+          "w": 60,
+          "h": 100
+        }
+      ],
+      "air": [
+        {
+          "x": -30,
+          "y": 20,
+          "w": 60,
+          "h": 120
+        }
+      ]
+    }
+  },
+  "moves": {
+    "punch": {
+      "name": "ジャブ",
+      "posture": "stand",
+      "startup": 4,
+      "active": 2,
+      "recovery": 8,
+      "hits": [
+        {
+          "damage": 30,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 100,
+            "w": 70,
+            "h": 20
+          }
+        }
+      ]
+    },
+    "kick": {
+      "name": "旋風脚",
+      "posture": "stand",
+      "startup": 8,
+      "active": 3,
+      "recovery": 14,
+      "hits": [
+        {
+          "damage": 50,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 60,
+            "w": 110,
+            "h": 24
+          }
+        }
+      ]
+    },
+    "crouchPunch": {
+      "name": "下段掌",
+      "posture": "crouch",
+      "startup": 5,
+      "active": 3,
+      "recovery": 10,
+      "hits": [
+        {
+          "damage": 30,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 40,
+            "w": 70,
+            "h": 20
+          }
+        }
+      ]
+    },
+    "crouchKick": {
+      "name": "足払い",
+      "posture": "crouch",
+      "startup": 9,
+      "active": 3,
+      "recovery": 18,
+      "hits": [
+        {
+          "damage": 50,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 0,
+            "w": 110,
+            "h": 20
+          },
+          "knockdown": true
+        }
+      ]
+    },
+    "airPunch": {
+      "name": "空中掌打",
+      "posture": "air",
+      "startup": 6,
+      "active": 6,
+      "recovery": 8,
+      "hits": [
+        {
+          "damage": 40,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 60,
+            "w": 70,
+            "h": 24
+          }
+        }
+      ]
+    },
+    "airKick": {
+      "name": "飛び蹴り",
+      "posture": "air",
+      "startup": 7,
+      "active": 8,
+      "recovery": 10,
+      "hits": [
+        {
+          "damage": 50,
+          "weight": "medium",
+          "box": {
+            "x": 10,
+            "y": -10,
+            "w": 80,
+            "h": 40
+          }
+        }
+      ]
+    }
+  }
+}

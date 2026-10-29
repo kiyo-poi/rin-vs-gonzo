@@ -1,0 +1,158 @@
+{
+  "id": "gonzo",
+  "name": "ゴンゾー",
+  "stats": {
+    "health": 1150,
+    "walkSpeed": 3,
+    "jumpAirFrames": 46,
+    "jumpHeight": 170,
+    "jumpForwardSpeed": 4,
+    "pushWidth": 80
+  },
+  "boxes": {
+    "hurt": {
+      "stand": [
+        {
+          "x": -45,
+          "y": 0,
+          "w": 90,
+          "h": 200
+        }
+      ],
+      "crouch": [
+        {
+          "x": -45,
+          "y": 0,
+          "w": 90,
+          "h": 130
+        }
+      ],
+      "air": [
+        {
+          "x": -45,
+          "y": 20,
+          "w": 90,
+          "h": 150
+        }
+      ]
+    }
+  },
+  "moves": {
+    "punch": {
+      "name": "チョップ",
+      "posture": "stand",
+      "startup": 9,
+      "active": 3,
+      "recovery": 16,
+      "hits": [
+        {
+          "damage": 70,
+          "weight": "medium",
+          "box": {
+            "x": 30,
+            "y": 120,
+            "w": 90,
+            "h": 30
+          }
+        }
+      ]
+    },
+    "kick": {
+      "name": "ビッグブーツ",
+      "posture": "stand",
+      "startup": 13,
+      "active": 4,
+      "recovery": 20,
+      "hits": [
+        {
+          "damage": 90,
+          "weight": "heavy",
+          "box": {
+            "x": 30,
+            "y": 80,
+            "w": 130,
+            "h": 30
+          }
+        }
+      ]
+    },
+    "crouchPunch": {
+      "name": "頭突きアッパー",
+      "posture": "crouch",
+      "startup": 8,
+      "active": 4,
+      "recovery": 20,
+      "hits": [
+        {
+          "damage": 80,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 100,
+            "w": 60,
+            "h": 80
+          }
+        }
+      ]
+    },
+    "crouchKick": {
+      "name": "ローキック払い",
+      "posture": "crouch",
+      "startup": 14,
+      "active": 4,
+      "recovery": 24,
+      "hits": [
+        {
+          "damage": 100,
+          "weight": "heavy",
+          "box": {
+            "x": 30,
+            "y": 0,
+            "w": 120,
+            "h": 24
+          },
+          "knockdown": true
+        }
+      ]
+    },
+    "airPunch": {
+      "name": "空中チョップ",
+      "posture": "air",
+      "startup": 9,
+      "active": 6,
+      "recovery": 12,
+      "hits": [
+        {
+          "damage": 70,
+          "weight": "medium",
+          "box": {
+            "x": 30,
+            "y": 0,
+            "w": 90,
+            "h": 60
+          }
+        }
+      ]
+    },
+    "airKick": {
+      "name": "ドロップキック",
+      "posture": "air",
+      "startup": 10,
+      "active": 8,
+      "recovery": 18,
+      "landingRecovery": 20,
+      "hits": [
+        {
+          "damage": 80,
+          "weight": "heavy",
+          "box": {
+            "x": 20,
+            "y": 20,
+            "w": 110,
+            "h": 60
+          }
+        }
+      ]
+    }
+  }
+}
