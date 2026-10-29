@@ -22,3 +22,9 @@ export function allCodes(controls: Controls): Set<string> {
   }
   return codes;
 }
+
+/** 押されているキーのうち、その人に割り当てたキーだけを返す（開発用のキー表示用） */
+export function keysFor(keys: ReadonlySet<string>, map: ButtonKeys): string[] {
+  const mine = new Set(BUTTONS.flatMap((b) => map[b]));
+  return [...keys].filter((code) => mine.has(code));
+}

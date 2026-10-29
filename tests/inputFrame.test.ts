@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { controls } from '../src/data/data';
-import { allCodes, buildInputFrame, emptyHeld, heldFromKeys } from '../src/input/inputFrame';
+import { allCodes, buildInputFrame, emptyHeld, heldFromKeys, keysFor } from '../src/input/inputFrame';
 
 describe('heldFromKeys', () => {
   it('1P の F でパンチ', () => {
@@ -42,5 +42,13 @@ describe('allCodes', () => {
     for (const code of ['KeyA', 'KeyF', 'Numpad4', 'KeyJ', 'Comma', 'ArrowUp', 'Escape']) {
       expect(codes.has(code)).toBe(true);
     }
+  });
+});
+
+describe('keysFor', () => {
+  it('押されているキーのうち、その人のキーだけを返す', () => {
+    const keys = new Set(['KeyF', 'Numpad4', 'KeyJ', 'KeyQ']);
+    expect(keysFor(keys, controls.p1)).toEqual(['KeyF']);
+    expect(keysFor(keys, controls.p2)).toEqual(['Numpad4', 'KeyJ']);
   });
 });
