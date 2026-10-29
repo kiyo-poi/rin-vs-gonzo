@@ -14,6 +14,8 @@ const COLORS = ['#e55', '#58f'] as const;
 const HEALTH_BAR = { width: 500, height: 24, top: 30, side: 40 };
 /** 背景の縦線の間隔（カメラの動きを見やすくするため） */
 const GRID = 160;
+/** ダウン中に寝かせて描く四角の高さ */
+const LYING_HEIGHT = 30;
 
 export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: Params, debug: DebugInfo): void {
   const { width, height } = ctx.canvas;
@@ -38,7 +40,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
 
   battle.fighters.forEach((f, i) => {
     ctx.fillStyle = COLORS[i];
-    for (const box of hurtBoxes(f)) {
+    // 起き上がり無敵の間は2フレームに1回だけ描いて点滅させる
+    const hidden = f.invincible > 0 && battle.frame % 2 === 1;
+    const boxes = hidden ? [] : f.state.name === 'knockdown' ? [lyingBox(f)] : hurtBoxes(f);
+    for (const box of boxes) {
       const s = toScreen(box);
       ctx.fillRect(s.x, s.y, s.w, s.h);
       if (f.state.name === 'guard' || f.state.name === 'blockstun') {
@@ -71,6 +76,13 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
     ctx.fillText(`1P のキー: ${debug.keys.p1.join(' ')}`, 16, height - 40);
     ctx.fillText(`2P のキー: ${debug.keys.p2.join(' ')}`, 16, height - 16);
   }
+}
+
+/** ダウン中に足元へ寝かせて描く四角。幅は立ちの食らいの箱の高さ、高さは 30 */
+function lyingBox(f: Fighter): Box {
+  const stand = f.char.boxes.hurt.stand;
+  const standHeight = Math.max(...stand.map((b) => b.y + b.h));
+  return { x: f.x - standHeight / 2, y: f.y, w: standHeight, h: LYING_HEIGHT };
 }
 
 /** 仮の HUD：タイマー・ラウンド・勝ち数（●）・画面中央の文言 */
