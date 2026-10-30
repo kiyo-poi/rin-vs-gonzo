@@ -12,7 +12,7 @@ import type { SpriteStore } from '../render/sprites';
 import { phaseMessage } from '../render/hud';
 import { drawFrame, type DebugInfo, type View } from '../render/render';
 import { drawBothControls, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
-import { LEVELS, resultTitle, type MatchConfig, type Mode } from './config';
+import { LEVELS, resolveChar, resolveChars, resultTitle, type MatchConfig, type Mode } from './config';
 import { stepMenu } from './menu';
 import { createSelect, stepSelect, type SelectState } from './select';
 import { KO_SLOW_FRAMES, tickSlow } from './slowmo';
@@ -224,7 +224,7 @@ export class FightScene implements Scene {
     private readonly game: Game,
     private readonly config: MatchConfig,
   ) {
-    const chars = config.chars.map((id) => game.roster.find((c) => c.id === id) ?? game.roster[0]) as [CharacterData, CharacterData];
+    const chars = resolveChars(game.roster, config.chars);
     this.match = createMatch(chars, game.params);
     this.cpu = config.mode === 'cpu' ? createCpu(config.level, game.params, config.seed) : null;
     const [f0, f1] = this.match.battle.fighters;
@@ -329,7 +329,7 @@ export class PauseScene implements Scene {
     ctx.font = 'bold 56px sans-serif';
     ctx.fillText('PAUSE', width / 2, 110);
     drawMenu(ctx, ['再開', 'キャラ選択へ', 'タイトルへ'], this.index, width / 2, 190, 48);
-    const chars = this.config.chars.map((id) => this.game.roster.find((c) => c.id === id)!);
+    const chars = resolveChars(this.game.roster, this.config.chars);
     ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f88';
@@ -368,7 +368,7 @@ export class ResultScene implements Scene {
     drawScreen(ctx, resultTitle(this.winner, this.config.mode), 80);
     const cx = ctx.canvas.width / 2;
     if (this.winner !== null) {
-      const char = this.game.roster.find((c) => c.id === this.config.chars[this.winner!])!;
+      const char = resolveChar(this.game.roster, this.config.chars[this.winner]);
       // 勝ったキャラの立ち絵（画像が無ければ代わりのキャラ）
       drawPortrait(ctx, this.game.sprites, char, this.game.params, 'win', cx, 370, {
         scale: 0.4,
