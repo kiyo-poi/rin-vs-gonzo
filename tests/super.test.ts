@@ -66,9 +66,63 @@ describe('超必殺の受付', () => {
     expect(moveOf(t[9].fighters[0])).toBe('special');
   });
 
-  it('ゴンゾーの超必殺は仮置き（ジャイアントスイングは掴みのトラックで追加）なので、同時押しでも通常の必殺', () => {
-    const t = run(battleOf([gonzo, lin], [400, 1200]), 1, p1({ 1: SUPER }));
+});
+
+describe('ゴンゾーの超必殺 ジャイアントスイング（コマンド投げ）', () => {
+  // 押し合いの幅の外側どうしの隙間が 50px（掴み間合い 100px の内側）
+  const near: [number, number] = [400, 400 + (gonzo.stats.pushWidth + lin.stats.pushWidth) / 2 + 50];
+  const HOLD_GUARD = inputOf(['guard']);
+
+  /** ゴンゾーが 1F目に超必殺、林は guard を押し続ける。throw イベントまでと、その後の投げ終わりまでを返す */
+  function swing(p2: (i: number) => InputFrame = () => HOLD_GUARD, gauge = FULL, n = 120) {
+    return run(battleOf([gonzo, lin], near, [gauge, 0]), n, (i) => [i === 1 ? SUPER : NONE, p2(i)]);
+  }
+
+  it('ゲージ 1000 を使い、暗転 30F（superStart）', () => {
+    const t = swing();
+    expect(t[0].fighters[0].state).toEqual({ name: 'attack', frame: 0, move: 'super' });
+    expect(t[0].fighters[0].gauge).toBe(0);
+    expect(t[0].freeze).toBe(30);
+    expect(t[0].events).toEqual([{ type: 'superStart', attacker: 0 }]);
+  });
+
+  it('ガード中の相手も掴む（ガード不能）。投げ抜けできず、300 ダメージでダウン', () => {
+    // 投げられている間ずっと掴みを連打しても抜けられない
+    const t = swing((i) => (i > 30 ? inputOf([], ['grab']) : HOLD_GUARD));
+    const thrownAt = t.findIndex((b) => b.events.some((e) => e.type === 'throw'));
+    expect(thrownAt).toBeGreaterThan(0);
+    expect(t[thrownAt].fighters[1].state).toMatchObject({ name: 'thrown', techable: false, damage: 300 });
+    expect(t.some((b) => b.events.some((e) => e.type === 'tech'))).toBe(false);
+    const done = t.find((b) => b.fighters[1].state.name === 'knockdown')!;
+    expect(done.fighters[1].health).toBe(lin.stats.health - 300);
+  });
+
+  it('投げ終わりに相手を画面端の方へ 300px 運ぶ（ステージ端で止まる）', () => {
+    const t = swing();
+    const before = t.find((b) => b.fighters[1].state.name === 'thrown')!.fighters[1].x;
+    const done = t.find((b) => b.fighters[1].state.name === 'knockdown')!;
+    expect(done.fighters[1].x).toBe(before + 300);
+    // 端の近く：端で止まる
+    const edge = params.stage.width - params.stage.edgeMargin;
+    const b0 = battleOf([gonzo, lin], [edge - 150, edge - 150 + (gonzo.stats.pushWidth + lin.stats.pushWidth) / 2 + 20]);
+    const t2 = run(b0, 120, (i) => [i === 1 ? SUPER : NONE, HOLD_GUARD]);
+    expect(t2.find((b) => b.fighters[1].state.name === 'knockdown')!.fighters[1].x).toBe(edge);
+  });
+
+  it('ジャンプ中の相手は掴めない（空振り）', () => {
+    // 林が先に跳び、ゴンゾーは林が空中にいる間に超必殺を出す
+    const t = run(battleOf([gonzo, lin], near), 80, (i) => [i === 6 ? SUPER : NONE, i === 1 ? inputOf(['up'], ['up']) : i < 4 ? inputOf(['up']) : NONE]);
+    const started = t.findIndex((b) => moveOf(b.fighters[0]) === 'super');
+    expect(started).toBe(5);
+    expect(t[started + 31].fighters[1].y).toBeGreaterThan(0);
+    expect(t.some((b) => b.events.some((e) => e.type === 'throw'))).toBe(false);
+    expect(t.every((b) => b.fighters[1].health === lin.stats.health)).toBe(true);
+  });
+
+  it('ゲージが満タンでなければ通常の必殺（投げにならない）', () => {
+    const t = swing(() => HOLD_GUARD, FULL - 1);
     expect(moveOf(t[0].fighters[0])).toBe('special');
+    expect(t[0].freeze).toBe(0);
   });
 });
 

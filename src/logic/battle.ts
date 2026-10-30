@@ -93,7 +93,7 @@ function stepBattleBase(b: Battle, inputs: [InputFrame, InputFrame], params: Par
     if (!grabs[i]) continue;
     const t = getMove(moved[i].char, (moved[i].state as { move: string }).move).throw!;
     const attacker: Fighter = { ...moved[i], state: { name: 'throwing', frame: 0, duration: params.throwDuration } };
-    const defender: Fighter = { ...moved[1 - i], state: { name: 'thrown', frame: 0, duration: params.throwDuration, damage: t.damage, techable: t.techable } };
+    const defender: Fighter = { ...moved[1 - i], state: { name: 'thrown', frame: 0, duration: params.throwDuration, damage: t.damage, techable: t.techable, ...(t.carry ? { carry: t.carry } : {}) } };
     return {
       frame: b.frame + 1,
       fighters: i === 0 ? [attacker, defender] : [defender, attacker],

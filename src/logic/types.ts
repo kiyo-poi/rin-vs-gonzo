@@ -44,7 +44,13 @@ export type MoveStep = { frames: FrameRange; dx: number; dy?: number };
 export type ArmorData = { frames: FrameRange; hits: number; onAbsorb?: string };
 
 /** 掴み技 */
-export type ThrowData = { range: number; damage: number; techable: boolean };
+export type ThrowData = {
+  range: number;
+  damage: number;
+  techable: boolean;
+  /** 投げ終わりに、投げられた側を投げた側から離れる向き（画面端の方）へ運ぶ距離 px（ステージ端で止まる）。無ければその場 */
+  carry?: number;
+};
 
 /** 技を出す時の姿勢 */
 export type Posture = 'stand' | 'crouch' | 'air';
@@ -200,7 +206,7 @@ export type FighterState =
   /** 相手を投げている最中（frame 0 で入り、duration を超えたフレームで自由になる）。この間は食らわない */
   | { name: 'throwing'; frame: number; duration: number }
   /** 投げられている最中（frame 0 で入り、duration を超えたフレームで damage 減ってダウン）。techable なら投げ抜けできる */
-  | { name: 'thrown'; frame: number; duration: number; damage: number; techable: boolean };
+  | { name: 'thrown'; frame: number; duration: number; damage: number; techable: boolean; carry?: number };
 
 export type FighterStateName = FighterState['name'];
 

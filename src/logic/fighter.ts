@@ -212,8 +212,10 @@ function stepFighterBase(prev: Fighter, input: InputFrame, opponentX: number, pa
     }
     case 'thrown': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
-      // 投げ終わり：ダメージを受けてダウン
-      return { ...f, health: Math.max(0, f.health - st.damage), state: { name: 'knockdown', frame: 0, duration: params.knockdownFrames } };
+      // 投げ終わり：ダメージを受けてダウン。carry があれば投げた側から離れる向き（画面端の方）へ運ぶ
+      const away = f.x === opponentX ? -f.facing : f.x > opponentX ? 1 : -1;
+      const x = st.carry ? clampX(f.x + away * st.carry, params) : f.x;
+      return { ...f, x, health: Math.max(0, f.health - st.damage), state: { name: 'knockdown', frame: 0, duration: params.knockdownFrames } };
     }
     case 'knockdown': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };

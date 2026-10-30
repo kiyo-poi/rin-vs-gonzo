@@ -278,15 +278,20 @@
       }
     },
     "super": {
-      "_comment": "仮置き。ジャイアントスイング（コマンド投げ）は掴みの担当トラックが throw データで追加する。hits が空で throw もない間は超必殺として出ない（superMove.ts）",
-      "name": "ジャイアントスイング（仮）",
+      "name": "ジャイアントスイング",
       "posture": "stand",
-      "startup": 1,
-      "active": 1,
-      "recovery": 1,
+      "startup": 3,
+      "active": 3,
+      "recovery": 40,
       "hits": [],
       "kind": "super",
-      "meterCost": 1000
+      "meterCost": 1000,
+      "throw": {
+        "range": 100,
+        "damage": 300,
+        "techable": false,
+        "carry": 300
+      }
     }
   },
   "subMoves": {
