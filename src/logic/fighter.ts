@@ -1,5 +1,5 @@
 import { toWorld } from './boxes';
-import type { Box, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, MoveSlot, Params, Posture } from './types';
+import type { Box, InputBuffer, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, MoveSlot, Params, Posture } from './types';
 
 export function createFighter(char: CharacterData, x: number, facing: 1 | -1): Fighter {
   return {
@@ -12,6 +12,7 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     hitDone: [],
     guardLocked: false,
     armorLeft: 0,
+    buffer: null,
     invincible: 0,
   };
 }
@@ -143,14 +144,46 @@ function applyMovement(f: Fighter, move: MoveData, frame: number, params: Params
   return x === f.x && y === f.y ? f : { ...f, x, y: Math.max(0, y) };
 }
 
+/** 相手の位置から決まる向き（同じ位置なら今の向き） */
+function facingToward(f: Fighter, opponentX: number): 1 | -1 {
+  return opponentX === f.x ? f.facing : opponentX > f.x ? 1 : -1;
+}
+
+/** 先行入力を1フレーム進める。攻撃ボタンが押されたら 必殺 ＞ 掴み ＞ キック ＞ パンチ の一番高いもので作り直す */
+function nextBuffer(f: Fighter, input: InputFrame, opponentX: number, params: Params): InputBuffer | null {
+  const button = input.pressed.special ? 'special' : input.pressed.grab ? 'grab' : input.pressed.kick ? 'kick' : input.pressed.punch ? 'punch' : null;
+  if (button) {
+    const horizontal = (input.held.right ? 1 : 0) - (input.held.left ? 1 : 0);
+    return { button, down: input.held.down, forward: horizontal * facingToward(f, opponentX) > 0, age: 0 };
+  }
+  if (!f.buffer || f.buffer.age + 1 > params.inputBuffer) return null;
+  return { ...f.buffer, age: f.buffer.age + 1 };
+}
+
+/** 先行入力のボタンと方向から、出す技の枠を決める（必殺の向きは押したフレームの方向、↓ を → より優先） */
+function slotOf(buffer: InputBuffer): MoveSlot {
+  switch (buffer.button) {
+    case 'special': return buffer.down ? 'downSpecial' : buffer.forward ? 'forwardSpecial' : 'special';
+    case 'grab': return 'grab';
+    case 'kick': return buffer.down ? 'crouchKick' : 'kick';
+    case 'punch': return buffer.down ? 'crouchPunch' : 'punch';
+  }
+}
+
 /** 1フレーム進める */
 export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
-  const f: Fighter = { ...prev, invincible: Math.max(0, prev.invincible - 1) };
+  const f: Fighter = { ...prev, buffer: nextBuffer(prev, input, opponentX, params), invincible: Math.max(0, prev.invincible - 1) };
   const st = f.state;
   switch (st.name) {
     case 'attack': {
       // 全体フレームが終わるまでは技の途中。終わったフレームは自由に動ける
       const move = getMove(f.char, st.move);
+      // キャンセル：当たり（ガードされた）のあとに必殺が先行入力されていたら、その場で必殺技を1F目から出す（空振りでは出ない）
+      if (move.cancelInto?.includes('special') && f.hitDone.some(Boolean) && f.buffer?.button === 'special') {
+        const slot = slotOf(f.buffer);
+        const base: Fighter = { ...f, facing: facingToward(f, opponentX), buffer: null };
+        return applyMovement(startMove(base, slot, 1), f.char.moves[slot], 1, params);
+      }
       if (st.frame + 1 <= moveTotalFrames(move)) return applyMovement({ ...f, state: { ...st, frame: st.frame + 1 } }, move, st.frame + 1, params);
       break;
     }
@@ -216,6 +249,7 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
         }
         return {
           ...f,
+          buffer: attack !== st.attack && attack?.frame === 1 ? null : f.buffer,
           hitDone,
           guardLocked,
           armorLeft,
@@ -250,16 +284,11 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
     state: { name, frame: f.state.name === name ? f.state.frame + 1 : 1 },
   });
 
-  // 同じフレームに押されたら 必殺 ＞ 掴み ＞ キック ＞ パンチ（08_architecture.md の優先順位）
-  const attack = (move: MoveSlot): Fighter => applyMovement(startMove(base, move, 1), f.char.moves[move], 1, params);
-  if (input.pressed.special) {
-    // 向きはボタンを押したフレームの方向で決める。↓ を → より優先し、← はニュートラル
-    const forward = horizontal * facing > 0;
-    return attack(held.down ? 'downSpecial' : forward ? 'forwardSpecial' : 'special');
+  // 先行入力（6F以内に押した攻撃）があれば出す。優先順位 必殺 ＞ 掴み ＞ キック ＞ パンチ は、バッファを作る時に決まっている
+  if (f.buffer) {
+    const slot = slotOf(f.buffer);
+    return { ...applyMovement(startMove(base, slot, 1), f.char.moves[slot], 1, params), buffer: null };
   }
-  if (input.pressed.grab) return attack('grab');
-  if (input.pressed.kick) return attack(held.down ? 'crouchKick' : 'kick');
-  if (input.pressed.punch) return attack(held.down ? 'crouchPunch' : 'punch');
   if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1, dir: horizontal as -1 | 0 | 1 } };
   if (held.guard) {
     return { ...base, state: { name: 'guard', frame: f.state.name === 'guard' ? f.state.frame + 1 : 1, crouch: held.down } };

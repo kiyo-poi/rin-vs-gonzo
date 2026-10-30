@@ -11,6 +11,7 @@
   "clashRecoil": 16,
   "knockdownFrames": 40,
   "wakeupInvincible": 6,
+  "inputBuffer": 6,
   "throwTechWindow": 8,
   "throwDuration": 40,
   "airHitFallSpeed": 8,

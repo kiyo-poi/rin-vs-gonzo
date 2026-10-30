@@ -56,6 +56,9 @@
             "h": 30
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "kick": {
@@ -75,6 +78,9 @@
             "h": 30
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "crouchPunch": {
@@ -94,6 +100,9 @@
             "h": 80
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "crouchKick": {
@@ -114,6 +123,9 @@
           },
           "knockdown": true
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "airPunch": {

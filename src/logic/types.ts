@@ -116,6 +116,8 @@ export interface Params {
   clashRecoil: number;
   /** ダウンしている時間 F（当たった次のフレームが1F目） */
   knockdownFrames: number;
+  /** 先行入力の受付 F（押してから、この F 数目まで技が出せる） */
+  inputBuffer: number;
   /** 投げ抜けを受け付ける F（投げられた次のフレームが1F目） */
   throwTechWindow: number;
   /** 投げの演出の長さ F（掴んだ次のフレームが1F目） */
@@ -190,6 +192,14 @@ export type FighterState =
 
 export type FighterStateName = FighterState['name'];
 
+export interface InputBuffer {
+  button: 'special' | 'grab' | 'kick' | 'punch';
+  down: boolean;
+  /** 向きに対して前を押していたか */
+  forward: boolean;
+  age: number;
+}
+
 export interface Fighter {
   char: CharacterData;
   x: number;
@@ -204,6 +214,8 @@ export interface Fighter {
   guardLocked: boolean;
   /** 今の技のアーマーが、あと何発耐えられるか。技が始まる時に armor.hits（アーマーのない技は 0） */
   armorLeft: number;
+  /** 先行入力。攻撃ボタンが押されたフレームの、一番優先順位の高いボタンと方向。age は押してから何F目か（押したフレームが 0）。技を出したら null */
+  buffer: InputBuffer | null;
   /** 起き上がり無敵の残りフレーム（0 なら無敵ではない） */
   invincible: number;
 }
