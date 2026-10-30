@@ -120,6 +120,8 @@ chibi, super deformed, 2.5 heads tall, anime style, thick bold black outlines, f
 
 ファイル名は英小文字・数字・アンダーバーだけ。
 
+**`assets/` の中身はすべて、公開したゲームの一部としてそのまま公開される。** キャラ設定シート・下書き・プロンプトのメモなど、公開したくないものは `assets/` の外（例：`fighting-game/art-work/`）に置く。
+
 ```
 fighting-game/assets/images/
   characters/
