@@ -116,6 +116,10 @@ export interface Params {
   clashRecoil: number;
   /** ダウンしている時間 F（当たった次のフレームが1F目） */
   knockdownFrames: number;
+  /** 連続技の2発目以降（技が2つ以上）のダメージの割合 */
+  comboDamageRate: number;
+  /** ガードされた必殺技の削りの割合 */
+  chipRate: number;
   /** 先行入力の受付 F（押してから、この F 数目まで技が出せる） */
   inputBuffer: number;
   /** 投げ抜けを受け付ける F（投げられた次のフレームが1F目） */
@@ -216,6 +220,8 @@ export interface Fighter {
   armorLeft: number;
   /** 先行入力。攻撃ボタンが押されたフレームの、一番優先順位の高いボタンと方向。age は押してから何F目か（押したフレームが 0）。技を出したら null */
   buffer: InputBuffer | null;
+  /** 受けている連続技。moves は当たった技の数（多段技は1つ）、hits は当たった数。自由に動ける状態になったら 0 */
+  combo: { moves: number; hits: number };
   /** 起き上がり無敵の残りフレーム（0 なら無敵ではない） */
   invincible: number;
 }

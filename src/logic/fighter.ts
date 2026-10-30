@@ -13,6 +13,7 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     guardLocked: false,
     armorLeft: 0,
     buffer: null,
+    combo: { moves: 0, hits: 0 },
     invincible: 0,
   };
 }
@@ -276,7 +277,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   const held = input.held;
   // 左右同時押しは 0（どちらも押していない扱い）
   const horizontal = (held.right ? 1 : 0) - (held.left ? 1 : 0);
-  const base: Fighter = { ...f, facing, hitDone: [], guardLocked: false, armorLeft: 0 };
+  const base: Fighter = { ...f, facing, hitDone: [], guardLocked: false, armorLeft: 0, combo: { moves: 0, hits: 0 } };
 
   const enter = (name: FreeStateName, x = base.x): Fighter => ({
     ...base,

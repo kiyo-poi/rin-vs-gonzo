@@ -108,10 +108,19 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
         ...fighters[defender],
         state: { name: 'blockstun', frame: 0, duration: weight.blockstun, crouch: isCrouching(fighters[defender]) },
       };
+      // 削りは必殺技だけ。体力1で止める（KOしない）
+      const move = cur ? getMove(fighters[attacker].char, cur.move) : null;
+      const chip = move?.kind === 'special' ? Math.floor(result.hit.damage * params.chipRate) : 0;
+      const d = fighters[defender];
+      if (chip > 0 && d.health > 1) fighters[defender] = { ...d, health: Math.max(1, d.health - chip) };
       events.push({ type: 'block', attacker, damage: 0 });
     } else {
       const d = fighters[defender];
-      const health = Math.max(0, d.health - result.hit.damage);
+      // 連続技：攻撃側の今の技で最初に当たった当たりなら技の数を増やす。2つ目の技からは補正（多段技のヒット同士は補正しない）
+      const firstOfMove = !moved[attacker].hitDone.some(Boolean);
+      const combo = { moves: d.combo.moves + (firstOfMove ? 1 : 0), hits: d.combo.hits + 1 };
+      const damage = combo.moves >= 2 ? Math.floor(result.hit.damage * params.comboDamageRate) : result.hit.damage;
+      const health = Math.max(0, d.health - damage);
       // 空中で食らったら落下（y はそのまま）。ただし倒れる一撃なら、KO 画面で宙に浮かないようすぐ地面に倒す。
       // 地上で knockdown の技ならダウン。それ以外はのけぞり
       const knockdown: FighterState = { name: 'knockdown', frame: 0, duration: params.knockdownFrames };
@@ -121,8 +130,8 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
         : wasAir ? { name: 'airHit', frame: 0 }
         : result.hit.knockdown ? knockdown
         : { name: 'hitstun', frame: 0, duration: weight.hitstun, crouch: isCrouching(d) };
-      fighters[defender] = { ...d, health, y: wasAir && health === 0 ? 0 : d.y, state };
-      events.push({ type: 'hit', attacker, damage: result.hit.damage });
+      fighters[defender] = { ...d, health, combo, y: wasAir && health === 0 ? 0 : d.y, state };
+      events.push({ type: 'hit', attacker, damage });
     }
     const distance = weight.knockback * (result.blocked ? params.blockKnockbackRate : 1);
     const [pushedAttacker, pushedDefender] = applyKnockback(fighters[attacker], fighters[defender], distance, params);
