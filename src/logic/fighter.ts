@@ -68,7 +68,7 @@ export function activeHitbox(f: Fighter): { box: Box; hit: HitData; index: numbe
 
 /** 攻撃を食らう状態か。ダウン・落下中と、起き上がり無敵・技の無敵の間は当たらない */
 export function isHittable(f: Fighter): boolean {
-  if (f.state.name === 'knockdown' || f.state.name === 'airHit' || f.invincible > 0) return false;
+  if (f.state.name === 'knockdown' || f.state.name === 'airHit' || f.state.name === 'throwing' || f.state.name === 'thrown' || f.invincible > 0) return false;
   const cur = currentAttack(f);
   if (cur) {
     const invincible = getMove(f.char, cur.move).invincible;
@@ -163,6 +163,15 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
     case 'recoil': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
       break;
+    }
+    case 'throwing': {
+      if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      break;
+    }
+    case 'thrown': {
+      if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      // 投げ終わり：ダメージを受けてダウン
+      return { ...f, health: Math.max(0, f.health - st.damage), state: { name: 'knockdown', frame: 0, duration: params.knockdownFrames } };
     }
     case 'knockdown': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };

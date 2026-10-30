@@ -116,6 +116,10 @@ export interface Params {
   clashRecoil: number;
   /** ダウンしている時間 F（当たった次のフレームが1F目） */
   knockdownFrames: number;
+  /** 投げ抜けを受け付ける F（投げられた次のフレームが1F目） */
+  throwTechWindow: number;
+  /** 投げの演出の長さ F（掴んだ次のフレームが1F目） */
+  throwDuration: number;
   /** 起き上がってからの無敵 F */
   wakeupInvincible: number;
   /** 空中で食らってから落ちる速さ px/F */
@@ -178,7 +182,11 @@ export type FighterState =
   /** ダウン（frame 0 で入り、duration を超えたフレームで起き上がる） */
   | { name: 'knockdown'; frame: number; duration: number }
   /** 空中で食らって落下中（着地したフレームからダウン） */
-  | { name: 'airHit'; frame: number };
+  | { name: 'airHit'; frame: number }
+  /** 相手を投げている最中（frame 0 で入り、duration を超えたフレームで自由になる）。この間は食らわない */
+  | { name: 'throwing'; frame: number; duration: number }
+  /** 投げられている最中（frame 0 で入り、duration を超えたフレームで damage 減ってダウン）。techable なら投げ抜けできる */
+  | { name: 'thrown'; frame: number; duration: number; damage: number; techable: boolean };
 
 export type FighterStateName = FighterState['name'];
 

@@ -1,9 +1,12 @@
 import { overlaps } from './boxes';
 import { activeHitbox, clampX, clashRecoil, createFighter, currentAttack, faceOpponent, hurtBoxes, isAirborne, getMove, isCrouching, isHittable, startMove, stepFighter } from './fighter';
+import { grabConnects } from './throw';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
-export type BattleEvent = { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number } | { type: 'clash' };
+export type BattleEvent = { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number } | { type: 'clash' }
+  | { type: 'throw'; attacker: 0 | 1 }
+  | { type: 'tech' };
 
 export interface Battle {
   frame: number;
@@ -30,6 +33,14 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     stepFighter(before0, inputs[0], before1.x, params),
     stepFighter(before1, inputs[1], before0.x, params),
   ];
+  // 投げ抜け：投げられて 1〜throwTechWindow F目に掴みを押したら、両者弾かれて仕切り直し
+  const teched = [0, 1].some((j) => {
+    const st = b.fighters[j].state;
+    return st.name === 'thrown' && st.techable && st.frame + 1 <= params.throwTechWindow && inputs[j].pressed.grab;
+  });
+  if (teched) {
+    return { frame: b.frame + 1, fighters: [clashRecoil(stepped[0], params), clashRecoil(stepped[1], params)], events: [{ type: 'tech' }] };
+  }
   // 判定の前に、押し合い → 2人の距離の上限 の順で位置を直す（08_architecture.md 2.4 の5番）
   const pushed = limitDistance(resolvePush(stepped, b.fighters, params), b.fighters, params);
   // 押し合いで左右が入れ替わることがあるので、動かしたあとの位置で向きを決め直す（6番）
@@ -45,6 +56,24 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       frame: b.frame + 1,
       fighters: [clashRecoil(moved[0], params), clashRecoil(moved[1], params)],
       events: [{ type: 'clash' }],
+    };
+  }
+
+  // 掴み：打撃が同じフレームに当たっていれば掴みは不成立（打撃が勝つ）。掴み同士は相打ち。
+  // 届けば、ガード中・アーマー中でも成立する
+  const grabs = [0, 1].map((i) => !results[1 - i] && grabConnects(moved[i], moved[1 - i]));
+  if (grabs[0] && grabs[1]) {
+    return { frame: b.frame + 1, fighters: [clashRecoil(moved[0], params), clashRecoil(moved[1], params)], events: [{ type: 'clash' }] };
+  }
+  for (const i of [0, 1] as const) {
+    if (!grabs[i]) continue;
+    const t = getMove(moved[i].char, (moved[i].state as { move: string }).move).throw!;
+    const attacker: Fighter = { ...moved[i], state: { name: 'throwing', frame: 0, duration: params.throwDuration } };
+    const defender: Fighter = { ...moved[1 - i], state: { name: 'thrown', frame: 0, duration: params.throwDuration, damage: t.damage, techable: t.techable } };
+    return {
+      frame: b.frame + 1,
+      fighters: i === 0 ? [attacker, defender] : [defender, attacker],
+      events: [{ type: 'throw', attacker: i }],
     };
   }
 

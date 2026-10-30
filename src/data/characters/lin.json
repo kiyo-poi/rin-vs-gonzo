@@ -308,16 +308,16 @@
       ]
     },
     "grab": {
-      "name": "掴み（仮）",
+      "name": "肩乗りエルボー",
       "posture": "stand",
-      "startup": 6,
-      "active": 3,
-      "recovery": 26,
+      "startup": 5,
+      "active": 2,
+      "recovery": 20,
       "hits": [],
       "kind": "throw",
       "throw": {
         "range": 60,
-        "damage": 0,
+        "damage": 80,
         "techable": true
       }
     }

@@ -158,4 +158,15 @@ describe('キャラデータ', () => {
     expect(gonzo.moves.forwardSpecial.armor).toEqual({ frames: { from: 17, to: 36 }, hits: 1 });
     expect(gonzo.stats.armorDamageRate).toBe(0.5);
   });
+
+  it('掴みは リン 肩乗りエルボー 5/2/20・間合い60・80、ゴンゾー ボディスラム 6/3/26・間合い90・140', () => {
+    const l = lin.moves.grab;
+    expect([l.startup, l.active, l.recovery, l.kind, l.hits]).toEqual([5, 2, 20, 'throw', []]);
+    expect(l.throw).toEqual({ range: 60, damage: 80, techable: true });
+    const g = gonzo.moves.grab;
+    expect([g.startup, g.active, g.recovery, g.kind, g.hits]).toEqual([6, 3, 26, 'throw', []]);
+    expect(g.throw).toEqual({ range: 90, damage: 140, techable: true });
+    expect(params.throwTechWindow).toBe(8);
+    expect(params.throwDuration).toBe(40);
+  });
 });
