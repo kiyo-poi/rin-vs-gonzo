@@ -74,9 +74,6 @@ export class TitleScene implements Scene {
       drawScreen(ctx, GAME_TITLE, 96);
     }
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#fc3';
-    ctx.font = 'bold 28px sans-serif';
-    ctx.fillText('〜 少ないボタンで笑える格闘ゲーム 〜', ctx.canvas.width / 2, logo ? 215 : 170);
     // 「PRESS START」はゆっくり点滅させる
     if (Math.floor(this.frame / 30) % 2 === 0) {
       ctx.fillStyle = '#fff';
