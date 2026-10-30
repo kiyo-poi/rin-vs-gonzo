@@ -1,3 +1,4 @@
+import { getMove } from '../logic/fighter';
 import type { Match } from '../logic/match';
 import { BUTTONS, type Button, type Fighter, type InputFrame, type MoveSlot, type Params } from '../logic/types';
 
@@ -104,7 +105,7 @@ export function createCpu(level: CpuLevel, params: Params, seed: number): CpuCon
     }
     if (guarding && oppAttack && isFree(me) && dist <= oppReach + 60) {
       held.guard = true;
-      if (seen.char.moves[oppAttack].posture === 'crouch') held.down = true;
+      if (getMove(seen.char, oppAttack).posture === 'crouch') held.down = true;
       return;
     }
     if (!isFree(me)) return;
@@ -121,7 +122,7 @@ export function createCpu(level: CpuLevel, params: Params, seed: number): CpuCon
     }
 
     // 相手が硬直中で届くなら反撃（つよい）／届く位置ならときどき攻撃
-    const oppRecovering = st.name === 'attack' && st.frame > seen.char.moves[st.move].startup + seen.char.moves[st.move].active;
+    const oppRecovering = st.name === 'attack' && st.frame > getMove(seen.char, st.move).startup + getMove(seen.char, st.move).active;
     const inRange = dist <= myReach;
     if (inRange && cooldown === 0) {
       const punish = level === 'hard' && oppRecovering;
