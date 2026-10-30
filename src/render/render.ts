@@ -1,7 +1,9 @@
 import { activeHitbox, hurtBoxes } from '../logic/fighter';
-import { canRematch, timerSeconds, type Match } from '../logic/match';
+import { timerSeconds, type Match } from '../logic/match';
 import type { Box, Fighter, Params } from '../logic/types';
 import { cameraX } from './camera';
+import { shakeOffset, type Effect, type EffectsState } from './effects';
+import type { Trail } from './healthTrail';
 import { phaseMessage } from './hud';
 
 export interface DebugInfo {
@@ -10,18 +12,29 @@ export interface DebugInfo {
   keys: { p1: string[]; p2: string[] };
 }
 
-const COLORS = ['#e55', '#58f'] as const;
+/** 対戦シーンが持つ見た目だけの値 */
+export interface View {
+  /** 1P・2P を描く色（同じキャラ同士なら 2P は色違い） */
+  colors: [string, string];
+  trails: [Trail, Trail];
+  effects: EffectsState;
+}
+
 const HEALTH_BAR = { width: 500, height: 24, top: 30, side: 40 };
 /** 背景の縦線の間隔（カメラの動きを見やすくするため） */
 const GRID = 160;
 /** ダウン中に寝かせて描く四角の高さ */
 const LYING_HEIGHT = 30;
 
-export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: Params, debug: DebugInfo): void {
+export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: Params, view: View, debug: DebugInfo): void {
   const { width, height } = ctx.canvas;
   const groundY = params.render.groundY;
   const battle = match.battle;
-  const camX = cameraX(battle.fighters, params);
+  // 画面揺れはカメラに足すだけ（ロジックの位置は変えない）
+  const shake = shakeOffset(view.effects);
+  const camX = cameraX(battle.fighters, params) + shake.x;
+  ctx.save();
+  ctx.translate(0, shake.y);
   // ロジックはステージ座標・上がプラス、Canvas は画面座標・下がプラスなので変換する
   const toScreen = (b: Box) => ({ x: b.x - camX, y: groundY - b.y - b.h, w: b.w, h: b.h });
 
@@ -39,7 +52,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
   ctx.fillRect(0, groundY, width, height - groundY);
 
   battle.fighters.forEach((f, i) => {
-    ctx.fillStyle = COLORS[i];
+    ctx.fillStyle = view.colors[i];
     // 起き上がり無敵の間は2フレームに1回だけ描いて点滅させる。決着表示中は battle.frame が止まるので、点滅させない
     const hidden = match.phase === 'fight' && f.invincible > 0 && battle.frame % 2 === 1;
     const boxes = hidden ? [] : f.state.name === 'knockdown' ? [lyingBox(f)] : hurtBoxes(f);
@@ -52,7 +65,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
         ctx.strokeRect(s.x, s.y, s.w, s.h);
       }
     }
-    drawHealth(ctx, f, i, width);
 
     if (debug.show) {
       const active = activeHitbox(f);
@@ -68,6 +80,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
     }
   });
 
+  for (const e of view.effects.list) drawEffect(ctx, e, e.x - camX, groundY - e.y);
+  ctx.restore();
+
+  battle.fighters.forEach((f, i) => drawHealth(ctx, f, i, width, view.trails[i]));
   drawHud(ctx, match, params, width);
 
   if (debug.show) {
@@ -94,11 +110,14 @@ function drawHud(ctx: CanvasRenderingContext2D, match: Match, params: Params, wi
   ctx.font = '16px sans-serif';
   ctx.fillText(`ROUND ${match.round}`, width / 2, 90);
 
-  ctx.font = '20px sans-serif';
+  // 体力バーの下：キャラ名と、取ったラウンドの数（●）。まだ取っていない分は ○
+  const need = params.round.winsToWin;
+  const marks = (n: number) => '●'.repeat(Math.min(n, need)) + '○'.repeat(Math.max(0, need - n));
+  ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('●'.repeat(match.wins[0]), HEALTH_BAR.side, 80);
+  ctx.fillText(`${match.chars[0].name}  ${marks(match.wins[0])}`, HEALTH_BAR.side, 82);
   ctx.textAlign = 'right';
-  ctx.fillText('●'.repeat(match.wins[1]), width - HEALTH_BAR.side, 80);
+  ctx.fillText(`${marks(match.wins[1])}  ${match.chars[1].name}`, width - HEALTH_BAR.side, 82);
 
   const message = phaseMessage(match, params);
   ctx.textAlign = 'center';
@@ -106,20 +125,55 @@ function drawHud(ctx: CanvasRenderingContext2D, match: Match, params: Params, wi
     ctx.font = 'bold 72px sans-serif';
     ctx.fillText(message, width / 2, 300);
   }
-  if (canRematch(match, params)) {
-    ctx.font = '24px sans-serif';
-    ctx.fillText('パンチでもう一度', width / 2, 360);
-  }
   ctx.textAlign = 'left';
 }
 
-/** 体力バー。1P は左、2P は右。減ると外側から縮む（中央側に寄せて描く） */
-function drawHealth(ctx: CanvasRenderingContext2D, f: Fighter, index: number, width: number): void {
+/** 体力バー。1P は左、2P は右。減ると外側から縮む（中央側に寄せて描く）。減った分は赤く残ってから縮む */
+function drawHealth(ctx: CanvasRenderingContext2D, f: Fighter, index: number, width: number, trail: Trail): void {
   const { width: barW, height: barH, top, side } = HEALTH_BAR;
   const x = index === 0 ? side : width - side - barW;
-  ctx.fillStyle = '#400';
+  const max = f.char.stats.health;
+  const bar = (value: number, color: string) => {
+    const w = (barW * Math.max(0, value)) / max;
+    ctx.fillStyle = color;
+    ctx.fillRect(index === 0 ? x + barW - w : x, top, w, barH);
+  };
+  ctx.fillStyle = '#222';
   ctx.fillRect(x, top, barW, barH);
-  const w = (barW * f.health) / f.char.stats.health;
-  ctx.fillStyle = '#fc3';
-  ctx.fillRect(index === 0 ? x + barW - w : x, top, w, barH);
+  bar(trail.value, '#e22');
+  bar(f.health, '#fc3');
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, top, barW, barH);
+}
+
+const SPARK_COLORS = { hitSpark: '#ffd23a', blockSpark: '#6cf', clashSpark: '#fff' } as const;
+
+/** 演出1つ。火花は広がりながら薄くなる線、擬音は上に浮きながら消える文字 */
+function drawEffect(ctx: CanvasRenderingContext2D, e: Effect, sx: number, sy: number): void {
+  const t = e.age / e.life;
+  ctx.save();
+  ctx.globalAlpha = 1 - t;
+  if (e.kind === 'text') {
+    ctx.font = `bold ${Math.round(40 * e.scale)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(e.text ?? '', sx, sy - t * 30);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(e.text ?? '', sx, sy - t * 30);
+  } else {
+    ctx.strokeStyle = SPARK_COLORS[e.kind];
+    ctx.lineWidth = 4;
+    const r1 = (10 + 50 * t) * e.scale;
+    const r2 = r1 * 0.4;
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + (e.kind === 'blockSpark' ? Math.PI / 8 : 0);
+      ctx.beginPath();
+      ctx.moveTo(sx + Math.cos(a) * r2, sy + Math.sin(a) * r2);
+      ctx.lineTo(sx + Math.cos(a) * r1, sy + Math.sin(a) * r1);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
