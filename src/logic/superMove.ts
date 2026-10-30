@@ -66,3 +66,16 @@ export function superClashPriority<R>(fighters: [Fighter, Fighter], results: [R 
 export function superChipDamage(attacker: Fighter, hit: HitData, params: Params): number {
   return isSuperAttack(attacker) ? Math.floor(hit.damage * params.superChipRate) : 0;
 }
+
+/**
+ * 超必殺の突進は相手の手前（押し合いの幅）で止める。突進が速く、持続の前に相手をすり抜けてしまわないように。
+ * 相手の前にいた時だけ止める（すでに後ろにいたら何もしない）
+ */
+export function limitSuperDash(prev: Fighter, next: Fighter, opponentX: number): Fighter {
+  if (!isSuperAttack(next) || next.x === prev.x) return next;
+  const dir = next.facing;
+  if (dir * (prev.x - opponentX) >= 0) return next;
+  const limit = opponentX - dir * next.char.stats.pushWidth;
+  if (dir * (next.x - limit) <= 0) return next;
+  return { ...next, x: dir * (prev.x - limit) > 0 ? prev.x : limit };
+}
