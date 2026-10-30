@@ -169,4 +169,40 @@ describe('キャラデータ', () => {
     expect(params.throwTechWindow).toBe(8);
     expect(params.throwDuration).toBe(40);
   });
+
+  it('両キャラの全技（通常6＋必殺3＋掴み1、ゴンゾーは反撃パンチも）が 03_moves.md の表のとおり', () => {
+    // [発生, 持続, 硬直, 当たりの数, 合計ダメージ, 各当たりの重さ]
+    type Row = readonly [number, number, number, number, number, readonly string[]];
+    const ALL: Record<string, Record<string, Row>> = {
+      lin: {
+        punch: [4, 2, 8, 1, 30, ['light']], kick: [8, 3, 14, 1, 50, ['medium']],
+        crouchPunch: [5, 3, 10, 1, 30, ['light']], crouchKick: [9, 3, 18, 1, 50, ['medium']],
+        airPunch: [6, 6, 8, 1, 40, ['medium']], airKick: [7, 8, 10, 1, 50, ['medium']],
+        special: [7, 20, 16, 5, 90, ['light', 'light', 'light', 'light', 'medium']],
+        forwardSpecial: [12, 4, 18, 1, 70, ['medium']],
+        downSpecial: [5, 8, 30, 1, 100, ['heavy']],
+        grab: [5, 2, 20, 0, 0, []],
+      },
+      gonzo: {
+        punch: [9, 3, 16, 1, 70, ['medium']], kick: [13, 4, 20, 1, 90, ['heavy']],
+        crouchPunch: [8, 4, 20, 1, 80, ['medium']], crouchKick: [14, 4, 24, 1, 100, ['heavy']],
+        airPunch: [9, 6, 12, 1, 70, ['medium']], airKick: [10, 8, 18, 1, 80, ['heavy']],
+        special: [4, 26, 20, 0, 0, []],
+        forwardSpecial: [16, 20, 22, 1, 110, ['heavy']],
+        downSpecial: [30, 6, 24, 1, 100, ['heavy']],
+        grab: [6, 3, 26, 0, 0, []],
+      },
+    };
+    const counter: Row = [8, 3, 16, 1, 100, ['heavy']];
+    const actual = (m: (typeof lin)['moves']['punch']): Row => [
+      m.startup, m.active, m.recovery, m.hits.length, m.hits.reduce((sum, h) => sum + h.damage, 0), m.hits.map((h) => h.weight),
+    ];
+    for (const [id, rows] of Object.entries(ALL)) {
+      for (const [slot, row] of Object.entries(rows)) {
+        expect(actual(characters[id].moves[slot as MoveSlot]), `${id}.${slot}`).toEqual(row);
+      }
+    }
+    expect(actual(gonzo.subMoves!.counterPunch), 'gonzo.counterPunch').toEqual(counter);
+    expect(lin.subMoves).toBeUndefined();
+  });
 });
