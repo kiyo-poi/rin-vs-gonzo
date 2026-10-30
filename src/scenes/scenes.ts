@@ -42,7 +42,7 @@ function menuSound(game: Game, index: number, r: { index: number; decided: boole
   else if (r.index !== index) game.audio?.playUi('move');
 }
 
-const GAME_TITLE = 'FIGHT GAME';
+const GAME_TITLE = 'RIN vs GONZO';
 const TITLE_LOGO = 'ui/title_logo.png';
 
 export class TitleScene implements Scene {
