@@ -186,21 +186,32 @@ export class SelectScene implements Scene {
       const x = left + i * (cardW + gap);
       ctx.fillStyle = '#2a2a44';
       ctx.fillRect(x, top, cardW, cardH);
-      // 立ち絵（画像が無ければ代わりのキャラ）。カードの枠に収める
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(x + 10, top + 10, 90, 160);
-      ctx.clip();
-      drawPortrait(ctx, this.game.sprites, char, this.game.params, 'idle', x + 55, top + 165, { scale: 0.3, fallbackScale: 0.9 });
-      ctx.restore();
+      // 立ち絵。カードの左の欄（幅150）に、縦横の比を保って下揃えで収める。無ければ待機ポーズ
+      const portrait = this.game.sprites?.get(char.id, 'portrait');
+      const colW = 150;
+      if (portrait) {
+        const boxH = cardH - 20;
+        const s = Math.min(colW / portrait.naturalWidth, boxH / portrait.naturalHeight);
+        const w = portrait.naturalWidth * s;
+        const h = portrait.naturalHeight * s;
+        ctx.drawImage(portrait, x + 8 + (colW - w) / 2, top + 10 + boxH - h, w, h);
+      } else {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x + 10, top + 10, colW - 10, 160);
+        ctx.clip();
+        drawPortrait(ctx, this.game.sprites, char, this.game.params, 'idle', x + 8 + colW / 2, top + 165, { scale: 0.3, fallbackScale: 0.9 });
+        ctx.restore();
+      }
+      const textX = x + colW + 16;
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'left';
       ctx.font = 'bold 30px sans-serif';
-      ctx.fillText(char.name, x + 120, top + 50);
+      ctx.fillText(char.name, textX, top + 50);
       ctx.font = '18px sans-serif';
       ctx.fillStyle = '#fc3';
-      ctx.fillText(charType(char), x + 120, top + 80);
-      drawMoveList(ctx, char, x + 120, top + 115, 'left', cardW - 130);
+      ctx.fillText(charType(char), textX, top + 80);
+      drawMoveList(ctx, char, textX, top + 115, 'left', x + cardW - 10 - textX);
     });
     const labels = ['1P', this.mode === 'cpu' ? 'CPU' : '2P'];
     const colors = ['#f55', '#59f'];
