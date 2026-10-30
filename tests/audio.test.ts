@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAudio, noteFreq, RECIPES, soundForEvent, soundForPhaseMessage, SONGS } from '../src/audio/audio';
+import { createAudio, VOLUME, noteFreq, RECIPES, soundForEvent, soundForPhaseMessage, SONGS } from '../src/audio/audio';
 
 describe('soundForEvent', () => {
   const table: Array<[{ type: string; weight?: string; damage?: number }, string | null]> = [
@@ -75,5 +75,16 @@ describe('soundForPhaseMessage（試合の進行の音）', () => {
   });
   it('createAudio の playSound は AudioContext が無くても落ちない', () => {
     expect(() => createAudio().playSound('ko')).not.toThrow();
+  });
+});
+
+describe('音量', () => {
+  const level = (n: keyof typeof RECIPES) => [...(RECIPES[n].tones ?? []), ...(RECIPES[n].noise ?? [])].reduce((a, x) => a + (x.vol ?? 0.5), 0);
+  it('強い当たりは弱い当たりの 1.3 倍以下', () => {
+    expect(level('hit_heavy')).toBeLessThanOrEqual(level('hit_light') * 1.3);
+    expect(level('hit_medium')).toBeLessThanOrEqual(level('hit_heavy'));
+  });
+  it('効果音は以前（0.8）の半分程度', () => {
+    expect(VOLUME.sfx).toBeLessThanOrEqual(0.4);
   });
 });

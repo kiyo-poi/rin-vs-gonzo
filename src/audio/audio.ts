@@ -3,7 +3,7 @@ import type { BattleEvent } from '../logic/battle';
 /** 音量（0〜1）。調整はここだけで行う（08_architecture 2.8：全体・BGM・効果音の3つ） */
 export const VOLUME = {
   master: 0.6,
-  sfx: 0.8,
+  sfx: 0.4,
   bgm: 0.35,
 } as const;
 
@@ -87,12 +87,12 @@ interface Recipe { tones?: Tone[]; noise?: Noise[] }
 /** 効果音のレシピ（発振器とノイズの組み合わせ） */
 export const RECIPES: Record<SoundName, Recipe> = {
   hit_light: { tones: [{ f: 520, to: 200, dur: 0.07, wave: 'square', vol: 0.5 }], noise: [{ dur: 0.05, vol: 0.5, freq: 3000 }] },
-  hit_medium: { tones: [{ f: 360, to: 120, dur: 0.11, wave: 'square', vol: 0.6 }], noise: [{ dur: 0.09, vol: 0.7, freq: 2000 }] },
-  hit_heavy: { tones: [{ f: 220, to: 50, dur: 0.22, wave: 'sawtooth', vol: 0.8 }, { f: 90, to: 40, dur: 0.25, wave: 'sine', vol: 0.9 }], noise: [{ dur: 0.16, vol: 0.9, freq: 1200 }] },
+  hit_medium: { tones: [{ f: 360, to: 120, dur: 0.11, wave: 'square', vol: 0.5 }], noise: [{ dur: 0.09, vol: 0.55, freq: 2000 }] },
+  hit_heavy: { tones: [{ f: 220, to: 50, dur: 0.22, wave: 'sawtooth', vol: 0.4 }, { f: 90, to: 40, dur: 0.25, wave: 'sine', vol: 0.4 }], noise: [{ dur: 0.16, vol: 0.45, freq: 1200 }] },
   block: { tones: [{ f: 900, to: 700, dur: 0.05, wave: 'square', vol: 0.4 }], noise: [{ dur: 0.04, vol: 0.4, freq: 5000 }] },
   clash: { tones: [{ f: 1800, to: 1500, dur: 0.25, wave: 'triangle', vol: 0.5 }, { f: 2700, to: 2300, dur: 0.2, wave: 'triangle', vol: 0.3 }], noise: [{ dur: 0.04, vol: 0.5, freq: 6000 }] },
   grab: { tones: [{ f: 300, to: 180, dur: 0.08, wave: 'square', vol: 0.5 }], noise: [{ dur: 0.05, vol: 0.4, freq: 1800 }] },
-  throw: { tones: [{ f: 140, to: 40, dur: 0.3, wave: 'sine', vol: 1 }], noise: [{ dur: 0.2, vol: 0.8, freq: 900 }] },
+  throw: { tones: [{ f: 140, to: 40, dur: 0.3, wave: 'sine', vol: 0.6 }], noise: [{ dur: 0.2, vol: 0.5, freq: 900 }] },
   tech: { tones: [{ f: 1100, to: 1400, dur: 0.06, wave: 'square', vol: 0.4 }], noise: [{ dur: 0.04, vol: 0.5, freq: 4000 }] },
   armor: { tones: [{ f: 180, to: 90, dur: 0.2, wave: 'sine', vol: 0.7 }, { f: 260, to: 130, dur: 0.2, wave: 'triangle', vol: 0.4, delay: 0.05 }] },
   super_start: { tones: [{ f: 400, to: 2400, dur: 0.45, wave: 'sawtooth', vol: 0.4 }, { f: 800, to: 3200, dur: 0.45, wave: 'square', vol: 0.2 }] },
