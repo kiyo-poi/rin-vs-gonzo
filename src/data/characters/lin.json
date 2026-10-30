@@ -152,6 +152,67 @@
           }
         }
       ]
+    },
+    "forwardSpecial": {
+      "name": "突進掌",
+      "posture": "stand",
+      "startup": 12,
+      "active": 4,
+      "recovery": 18,
+      "hits": [
+        {
+          "damage": 70,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 80,
+            "h": 30
+          }
+        }
+      ],
+      "kind": "special",
+      "movement": [
+        {
+          "frames": {
+            "from": 1,
+            "to": 12
+          },
+          "dx": 420
+        }
+      ]
+    },
+    "special": {
+      "name": "必殺（仮）",
+      "posture": "stand",
+      "startup": 10,
+      "active": 2,
+      "recovery": 20,
+      "hits": [],
+      "kind": "special"
+    },
+    "downSpecial": {
+      "name": "下必殺（仮）",
+      "posture": "stand",
+      "startup": 10,
+      "active": 2,
+      "recovery": 20,
+      "hits": [],
+      "kind": "special"
+    },
+    "grab": {
+      "name": "掴み（仮）",
+      "posture": "stand",
+      "startup": 6,
+      "active": 3,
+      "recovery": 26,
+      "hits": [],
+      "kind": "throw",
+      "throw": {
+        "range": 60,
+        "damage": 0,
+        "techable": true
+      }
     }
   }
 }

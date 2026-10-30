@@ -69,7 +69,7 @@ describe('キャラデータ', () => {
   });
 
   it('全技の姿勢は、パンチ・キックが stand、しゃがみが crouch、空中が air', () => {
-    const expected: Record<MoveSlot, string> = {
+    const expected: Partial<Record<MoveSlot, string>> = {
       punch: 'stand', kick: 'stand', crouchPunch: 'crouch', crouchKick: 'crouch', airPunch: 'air', airKick: 'air',
     };
     for (const [id, char] of Object.entries(characters)) {
@@ -87,5 +87,24 @@ describe('キャラデータ', () => {
 
   it('ゴンゾーの基本値は 03・06 のとおり', () => {
     expect(gonzo.stats).toMatchObject({ health: 1150, walkSpeed: 3, jumpAirFrames: 46, jumpHeight: 170, jumpForwardSpeed: 4 });
+  });
+
+  it('全キャラに必殺・前必殺・下必殺・掴みの枠がある', () => {
+    for (const char of Object.values(characters)) {
+      for (const slot of ['special', 'forwardSpecial', 'downSpecial', 'grab'] as const) {
+        expect(char.moves[slot], `${char.id}.${slot}`).toBeDefined();
+      }
+    }
+  });
+
+  it('突進掌は 12/4/18・70・中で 420px 突進、ラリアット突進は 16/20/22・110・重で 380px 突進', () => {
+    const palm = lin.moves.forwardSpecial;
+    expect([palm.startup, palm.active, palm.recovery, palm.hits[0].damage, palm.hits[0].weight]).toEqual([12, 4, 18, 70, 'medium']);
+    expect(palm.kind).toBe('special');
+    expect(palm.movement).toEqual([{ frames: { from: 1, to: 12 }, dx: 420 }]);
+    const lariat = gonzo.moves.forwardSpecial;
+    expect([lariat.startup, lariat.active, lariat.recovery, lariat.hits[0].damage, lariat.hits[0].weight]).toEqual([16, 20, 22, 110, 'heavy']);
+    expect(lariat.kind).toBe('special');
+    expect(lariat.movement).toEqual([{ frames: { from: 17, to: 36 }, dx: 380 }]);
   });
 });

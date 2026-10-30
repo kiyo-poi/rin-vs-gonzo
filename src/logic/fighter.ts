@@ -107,6 +107,22 @@ export function jumpY(frame: number, total: number, height: number): number {
   return 4 * height * t * (1 - t);
 }
 
+/**
+ * 技の移動。frame（技の何F目か）が movement の区間に入っていれば、区間の合計を等分して足す。
+ * x は画面端で止める。y は地面より下にならず、ほぼ 0 に戻ったら 0 にそろえる（小数の誤差を残さない）
+ */
+function applyMovement(f: Fighter, move: MoveData, frame: number, params: Params): Fighter {
+  let { x, y } = f;
+  for (const step of move.movement ?? []) {
+    if (frame < step.frames.from || frame > step.frames.to) continue;
+    const length = step.frames.to - step.frames.from + 1;
+    x = clampX(x + (f.facing * step.dx) / length, params);
+    y += (step.dy ?? 0) / length;
+  }
+  if (Math.abs(y) < 1e-6) y = 0;
+  return x === f.x && y === f.y ? f : { ...f, x, y: Math.max(0, y) };
+}
+
 /** 1フレーム進める */
 export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
   const f: Fighter = { ...prev, invincible: Math.max(0, prev.invincible - 1) };
@@ -114,7 +130,8 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
   switch (st.name) {
     case 'attack': {
       // 全体フレームが終わるまでは技の途中。終わったフレームは自由に動ける
-      if (st.frame + 1 <= moveTotalFrames(getMove(f.char, st.move))) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      const move = getMove(f.char, st.move);
+      if (st.frame + 1 <= moveTotalFrames(move)) return applyMovement({ ...f, state: { ...st, frame: st.frame + 1 } }, move, st.frame + 1, params);
       break;
     }
     case 'landing': {
@@ -198,12 +215,15 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
     state: { name, frame: f.state.name === name ? f.state.frame + 1 : 1 },
   });
 
-  // 同じフレームに押されたらキックを優先する（08_architecture.md の優先順位）
-  const attack = (move: MoveSlot): Fighter => ({
-    ...base,
-    hitDone: freshHitDone(f.char.moves[move]),
-    state: { name: 'attack', frame: 1, move },
-  });
+  // 同じフレームに押されたら 必殺 ＞ 掴み ＞ キック ＞ パンチ（08_architecture.md の優先順位）
+  const attack = (move: MoveSlot): Fighter =>
+    applyMovement({ ...base, hitDone: freshHitDone(f.char.moves[move]), state: { name: 'attack', frame: 1, move } }, f.char.moves[move], 1, params);
+  if (input.pressed.special) {
+    // 向きはボタンを押したフレームの方向で決める。↓ を → より優先し、← はニュートラル
+    const forward = horizontal * facing > 0;
+    return attack(held.down ? 'downSpecial' : forward ? 'forwardSpecial' : 'special');
+  }
+  if (input.pressed.grab) return attack('grab');
   if (input.pressed.kick) return attack(held.down ? 'crouchKick' : 'kick');
   if (input.pressed.punch) return attack(held.down ? 'crouchPunch' : 'punch');
   if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1, dir: horizontal as -1 | 0 | 1 } };

@@ -153,6 +153,67 @@
           }
         }
       ]
+    },
+    "forwardSpecial": {
+      "name": "ラリアット突進",
+      "posture": "stand",
+      "startup": 16,
+      "active": 20,
+      "recovery": 22,
+      "hits": [
+        {
+          "damage": 110,
+          "weight": "heavy",
+          "box": {
+            "x": 30,
+            "y": 100,
+            "w": 100,
+            "h": 40
+          }
+        }
+      ],
+      "kind": "special",
+      "movement": [
+        {
+          "frames": {
+            "from": 17,
+            "to": 36
+          },
+          "dx": 380
+        }
+      ]
+    },
+    "special": {
+      "name": "必殺（仮）",
+      "posture": "stand",
+      "startup": 10,
+      "active": 2,
+      "recovery": 20,
+      "hits": [],
+      "kind": "special"
+    },
+    "downSpecial": {
+      "name": "下必殺（仮）",
+      "posture": "stand",
+      "startup": 10,
+      "active": 2,
+      "recovery": 20,
+      "hits": [],
+      "kind": "special"
+    },
+    "grab": {
+      "name": "掴み（仮）",
+      "posture": "stand",
+      "startup": 6,
+      "active": 3,
+      "recovery": 26,
+      "hits": [],
+      "kind": "throw",
+      "throw": {
+        "range": 90,
+        "damage": 0,
+        "techable": true
+      }
     }
   }
 }

@@ -48,6 +48,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
   }
 
   const fighters: [Fighter, Fighter] = [moved[0], moved[1]];
+  const beforeKnockback: [Fighter, Fighter] = [moved[0], moved[1]];
   const events: BattleEvent[] = [];
   results.forEach((result, i) => {
     if (!result) return;
@@ -82,7 +83,9 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     fighters[defender] = pushedDefender;
   });
 
-  return { frame: b.frame + 1, fighters, events };
+  // ノックバックのあとにも、2人の距離の上限をかけ直す（画面端は applyKnockback の clampX が守る）
+  const limited = limitDistance(fighters, beforeKnockback, params);
+  return { frame: b.frame + 1, fighters: limited, events };
 }
 
 function markHitDone(f: Fighter, index: number): Fighter {

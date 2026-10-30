@@ -74,7 +74,9 @@ export interface MoveData {
 }
 
 /** 技を出すボタンの枠（掴み・必殺などは M3b 以降） */
-export type MoveSlot = 'punch' | 'kick' | 'crouchPunch' | 'crouchKick' | 'airPunch' | 'airKick';
+export type MoveSlot =
+  | 'punch' | 'kick' | 'crouchPunch' | 'crouchKick' | 'airPunch' | 'airKick'
+  | 'special' | 'forwardSpecial' | 'downSpecial' | 'grab';
 
 export interface CharacterData {
   id: string;
