@@ -141,7 +141,7 @@ def main():
             if not f.endswith('.png'): continue
             pose = f[len(cid) + 1:-4]
             img = Image.open(os.path.join(d, f)).convert('RGBA')
-            if img.size != POSE_SIZE:  # cutin・portrait は切れ端だけ消す
+            if pose in ('cutin', 'portrait'):  # カットイン・立ち絵は切れ端だけ消す（大きさはそのまま）
                 out, _ = clean(img)
                 out.save(os.path.join(DST, cid, f)); continue
             img = strip_floor_band(img)
