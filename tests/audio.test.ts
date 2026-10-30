@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest';
+import { createAudio, noteFreq, RECIPES, soundForEvent, SONGS } from '../src/audio/audio';
+
+describe('soundForEvent', () => {
+  const table: Array<[{ type: string; weight?: string; damage?: number }, string | null]> = [
+    [{ type: 'hit', weight: 'light' }, 'hit_light'],
+    [{ type: 'hit', weight: 'medium' }, 'hit_medium'],
+    [{ type: 'hit', weight: 'heavy' }, 'hit_heavy'],
+    [{ type: 'hit', damage: 5 }, 'hit_light'],
+    [{ type: 'hit', damage: 10 }, 'hit_medium'],
+    [{ type: 'hit', damage: 20 }, 'hit_heavy'],
+    [{ type: 'block' }, 'block'],
+    [{ type: 'clash' }, 'clash'],
+    [{ type: 'grab' }, 'grab'],
+    [{ type: 'throw' }, 'throw'],
+    [{ type: 'tech' }, 'tech'],
+    [{ type: 'armor' }, 'armor'],
+    [{ type: 'ko' }, 'ko'],
+    [{ type: 'whatever' }, null],
+  ];
+  it.each(table)('%j → %s', (ev, sound) => {
+    expect(soundForEvent(ev)).toBe(sound);
+  });
+  it('返す音には必ずレシピがある', () => {
+    for (const [ev] of table) {
+      const s = soundForEvent(ev);
+      if (s) expect(RECIPES[s]).toBeDefined();
+    }
+  });
+});
+
+describe('BGM の表', () => {
+  it('melody と bass のステップ数が揃っている', () => {
+    for (const s of Object.values(SONGS)) expect(s.melody.length).toBe(s.bass.length);
+  });
+  it('noteFreq', () => {
+    expect(noteFreq('A4')).toBeCloseTo(440);
+    expect(noteFreq('-')).toBe(0);
+  });
+});
+
+describe('createAudio（AudioContext が無い環境）', () => {
+  it('unlock 前も後も例外を投げない', () => {
+    const a = createAudio();
+    expect(() => {
+      a.playEvents([{ type: 'hit', attacker: 0, damage: 5 }, { type: 'clash' }]);
+      a.playUi('move');
+      a.startBgm('title');
+      a.stopBgm();
+      a.unlock();
+      a.playEvents([{ type: 'clash' }]);
+      a.playUi('decide');
+      a.startBgm('stage');
+      a.stopBgm();
+    }).not.toThrow();
+  });
+  it('未知のイベントは無視する', () => {
+    const a = createAudio();
+    expect(() => a.playEvents([{ type: 'nope' } as never])).not.toThrow();
+  });
+});
