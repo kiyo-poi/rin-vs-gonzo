@@ -55,6 +55,9 @@
             "h": 20
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "kick": {
@@ -74,6 +77,9 @@
             "h": 24
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "crouchPunch": {
@@ -93,6 +99,9 @@
             "h": 20
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "crouchKick": {
@@ -113,6 +122,9 @@
           },
           "knockdown": true
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "airPunch": {
@@ -152,6 +164,174 @@
           }
         }
       ]
+    },
+    "forwardSpecial": {
+      "name": "突進掌",
+      "posture": "stand",
+      "startup": 12,
+      "active": 4,
+      "recovery": 18,
+      "hits": [
+        {
+          "damage": 70,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 80,
+            "h": 30
+          }
+        }
+      ],
+      "kind": "special",
+      "movement": [
+        {
+          "frames": {
+            "from": 1,
+            "to": 12
+          },
+          "dx": 420
+        }
+      ]
+    },
+    "special": {
+      "name": "連拳",
+      "posture": "stand",
+      "startup": 7,
+      "active": 20,
+      "recovery": 16,
+      "hits": [
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 1,
+            "to": 1
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 5,
+            "to": 5
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 9,
+            "to": 9
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 13,
+            "to": 13
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 17,
+            "to": 17
+          }
+        }
+      ],
+      "kind": "special",
+      "guardLock": true
+    },
+    "downSpecial": {
+      "name": "昇り蹴り",
+      "posture": "stand",
+      "startup": 5,
+      "active": 8,
+      "recovery": 30,
+      "hits": [
+        {
+          "damage": 100,
+          "weight": "heavy",
+          "box": {
+            "x": 0,
+            "y": 60,
+            "w": 70,
+            "h": 100
+          }
+        }
+      ],
+      "kind": "special",
+      "invincible": [
+        {
+          "from": 1,
+          "to": 7
+        }
+      ],
+      "movement": [
+        {
+          "frames": {
+            "from": 6,
+            "to": 13
+          },
+          "dx": 30,
+          "dy": 140
+        },
+        {
+          "frames": {
+            "from": 14,
+            "to": 43
+          },
+          "dx": 0,
+          "dy": -140
+        }
+      ]
+    },
+    "grab": {
+      "name": "肩乗りエルボー",
+      "posture": "stand",
+      "startup": 5,
+      "active": 2,
+      "recovery": 20,
+      "hits": [],
+      "kind": "throw",
+      "throw": {
+        "range": 60,
+        "damage": 80,
+        "techable": true
+      }
     }
   }
 }

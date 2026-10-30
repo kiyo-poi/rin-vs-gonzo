@@ -52,7 +52,7 @@ describe('パンチ（発生4・持続2・硬直8）', () => {
   });
 
   it('当たったあとは攻撃の箱が消える', () => {
-    expect(activeHitbox({ ...t[4], moveHasHit: true })).toBeNull();
+    expect(activeHitbox({ ...t[4], hitDone: [true] })).toBeNull();
   });
 });
 

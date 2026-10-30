@@ -7,7 +7,8 @@
     "jumpAirFrames": 46,
     "jumpHeight": 170,
     "jumpForwardSpeed": 4,
-    "pushWidth": 80
+    "pushWidth": 80,
+    "armorDamageRate": 0.5
   },
   "boxes": {
     "hurt": {
@@ -55,6 +56,9 @@
             "h": 30
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "kick": {
@@ -74,6 +78,9 @@
             "h": 30
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "crouchPunch": {
@@ -93,6 +100,9 @@
             "h": 80
           }
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "crouchKick": {
@@ -113,6 +123,9 @@
           },
           "knockdown": true
         }
+      ],
+      "cancelInto": [
+        "special"
       ]
     },
     "airPunch": {
@@ -153,6 +166,138 @@
           }
         }
       ]
+    },
+    "forwardSpecial": {
+      "name": "ラリアット突進",
+      "posture": "stand",
+      "startup": 16,
+      "active": 20,
+      "recovery": 22,
+      "hits": [
+        {
+          "damage": 110,
+          "weight": "heavy",
+          "box": {
+            "x": 30,
+            "y": 100,
+            "w": 100,
+            "h": 40
+          }
+        }
+      ],
+      "kind": "special",
+      "movement": [
+        {
+          "frames": {
+            "from": 17,
+            "to": 36
+          },
+          "dx": 380
+        }
+      ],
+      "armor": {
+        "frames": {
+          "from": 17,
+          "to": 36
+        },
+        "hits": 1
+      }
+    },
+    "special": {
+      "name": "マッスルポーズ",
+      "posture": "stand",
+      "startup": 4,
+      "active": 26,
+      "recovery": 20,
+      "hits": [],
+      "kind": "special",
+      "armor": {
+        "frames": {
+          "from": 5,
+          "to": 30
+        },
+        "hits": 1,
+        "onAbsorb": "counterPunch"
+      }
+    },
+    "downSpecial": {
+      "name": "ヒップドロップ",
+      "posture": "stand",
+      "startup": 30,
+      "active": 6,
+      "recovery": 24,
+      "hits": [
+        {
+          "damage": 100,
+          "weight": "heavy",
+          "box": {
+            "x": -160,
+            "y": 0,
+            "w": 320,
+            "h": 30
+          },
+          "frames": {
+            "from": 1,
+            "to": 6
+          },
+          "groundOnly": true
+        }
+      ],
+      "kind": "special",
+      "movement": [
+        {
+          "frames": {
+            "from": 1,
+            "to": 15
+          },
+          "dx": 0,
+          "dy": 120
+        },
+        {
+          "frames": {
+            "from": 16,
+            "to": 30
+          },
+          "dx": 0,
+          "dy": -120
+        }
+      ]
+    },
+    "grab": {
+      "name": "ボディスラム",
+      "posture": "stand",
+      "startup": 6,
+      "active": 3,
+      "recovery": 26,
+      "hits": [],
+      "kind": "throw",
+      "throw": {
+        "range": 90,
+        "damage": 140,
+        "techable": true
+      }
+    }
+  },
+  "subMoves": {
+    "counterPunch": {
+      "name": "反撃パンチ",
+      "posture": "stand",
+      "startup": 8,
+      "active": 3,
+      "recovery": 16,
+      "hits": [
+        {
+          "damage": 100,
+          "weight": "heavy",
+          "box": {
+            "x": 30,
+            "y": 110,
+            "w": 100,
+            "h": 30
+          }
+        }
+      ],
+      "kind": "special"
     }
   }
 }

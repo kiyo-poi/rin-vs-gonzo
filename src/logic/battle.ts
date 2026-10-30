@@ -1,9 +1,12 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, clashRecoil, createFighter, faceOpponent, hurtBoxes, isCrouching, isHittable, stepFighter } from './fighter';
+import { activeHitbox, clampX, clashRecoil, createFighter, currentAttack, faceOpponent, hurtBoxes, isAirborne, getMove, isCrouching, isHittable, startMove, stepFighter } from './fighter';
+import { grabConnects } from './throw';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
-export type BattleEvent = { type: 'hit' | 'block'; attacker: 0 | 1; damage: number } | { type: 'clash' };
+export type BattleEvent = { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number } | { type: 'clash' }
+  | { type: 'throw'; attacker: 0 | 1 }
+  | { type: 'tech' };
 
 export interface Battle {
   frame: number;
@@ -30,6 +33,14 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     stepFighter(before0, inputs[0], before1.x, params),
     stepFighter(before1, inputs[1], before0.x, params),
   ];
+  // 投げ抜け：投げられて 1〜throwTechWindow F目に掴みを押したら、両者弾かれて仕切り直し
+  const teched = [0, 1].some((j) => {
+    const st = b.fighters[j].state;
+    return st.name === 'thrown' && st.techable && st.frame + 1 <= params.throwTechWindow && inputs[j].pressed.grab;
+  });
+  if (teched) {
+    return { frame: b.frame + 1, fighters: [clashRecoil(stepped[0], params), clashRecoil(stepped[1], params)], events: [{ type: 'tech' }] };
+  }
   // 判定の前に、押し合い → 2人の距離の上限 の順で位置を直す（08_architecture.md 2.4 の5番）
   const pushed = limitDistance(resolvePush(stepped, b.fighters, params), b.fighters, params);
   // 押し合いで左右が入れ替わることがあるので、動かしたあとの位置で向きを決め直す（6番）
@@ -38,8 +49,9 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
   // 両者とも「動かしたあとの同じ状態」で調べる（1P が先に処理されて有利にならないように）
   const results = [resolveAttack(moved[0], moved[1]), resolveAttack(moved[1], moved[0])];
 
-  // 両者の攻撃が同時に届いたら相打ち。ダメージ・ガード・ノックバックなしで両者が弾かれる
-  if (results[0] && results[1]) {
+  // 両者の攻撃が同時に届いたら相打ち。ダメージ・ガード・ノックバックなしで両者が弾かれる。
+  // ただし片方がアーマーで耐えられるなら相打ちにせず、アーマー側が耐えてアーマー側の打撃が当たる（08 2.4 の3番）
+  if (results[0] && results[1] && !results[0].armored && !results[1].armored) {
     return {
       frame: b.frame + 1,
       fighters: [clashRecoil(moved[0], params), clashRecoil(moved[1], params)],
@@ -47,34 +59,79 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     };
   }
 
+  // 掴み：打撃が同じフレームに当たっていれば掴みは不成立（打撃が勝つ）。掴み同士は相打ち。
+  // 届けば、ガード中・アーマー中でも成立する
+  const grabs = [0, 1].map((i) => !results[1 - i] && grabConnects(moved[i], moved[1 - i]));
+  if (grabs[0] && grabs[1]) {
+    return { frame: b.frame + 1, fighters: [clashRecoil(moved[0], params), clashRecoil(moved[1], params)], events: [{ type: 'clash' }] };
+  }
+  for (const i of [0, 1] as const) {
+    if (!grabs[i]) continue;
+    const t = getMove(moved[i].char, (moved[i].state as { move: string }).move).throw!;
+    const attacker: Fighter = { ...moved[i], state: { name: 'throwing', frame: 0, duration: params.throwDuration } };
+    const defender: Fighter = { ...moved[1 - i], state: { name: 'thrown', frame: 0, duration: params.throwDuration, damage: t.damage, techable: t.techable } };
+    return {
+      frame: b.frame + 1,
+      fighters: i === 0 ? [attacker, defender] : [defender, attacker],
+      events: [{ type: 'throw', attacker: i }],
+    };
+  }
+
   const fighters: [Fighter, Fighter] = [moved[0], moved[1]];
+  const beforeKnockback: [Fighter, Fighter] = [moved[0], moved[1]];
   const events: BattleEvent[] = [];
+  // 当たった当たりは先に全部済みにする（耐えた側が派生技に移っても、攻撃側の記録が混ざらないように）
+  results.forEach((result, i) => {
+    if (result) fighters[i] = markHitDone(fighters[i], result.index);
+  });
   results.forEach((result, i) => {
     if (!result) return;
     const attacker = i as 0 | 1;
     const defender = (1 - i) as 0 | 1;
     const weight = params.weights[result.hit.weight];
-    fighters[attacker] = { ...fighters[attacker], moveHasHit: true };
+    if (result.armored) {
+      // アーマーで耐える：被ダメージは割合だけ、のけぞり・ノックバックなし。耐えられる数を1つ減らし、派生技があれば移る
+      const d = fighters[defender];
+      const damage = Math.floor(result.hit.damage * (d.char.stats.armorDamageRate ?? 1));
+      const cur = currentAttack(d);
+      const onAbsorb = cur ? getMove(d.char, cur.move).armor?.onAbsorb : undefined;
+      const absorbed = { ...d, health: Math.max(0, d.health - damage), armorLeft: d.armorLeft - 1 };
+      fighters[defender] = onAbsorb ? startMove(absorbed, onAbsorb, 0) : absorbed;
+      events.push({ type: 'armor', attacker, damage });
+      return;
+    }
     if (result.blocked) {
+      // ガード固定の技は、1発目がガードされたら残りの当たりもガード扱いにする
+      const cur = currentAttack(fighters[attacker]);
+      if (cur && getMove(fighters[attacker].char, cur.move).guardLock) fighters[attacker] = { ...fighters[attacker], guardLocked: true };
       fighters[defender] = {
         ...fighters[defender],
         state: { name: 'blockstun', frame: 0, duration: weight.blockstun, crouch: isCrouching(fighters[defender]) },
       };
+      // 削りは必殺技だけ。体力1で止める（KOしない）
+      const move = cur ? getMove(fighters[attacker].char, cur.move) : null;
+      const chip = move?.kind === 'special' ? Math.floor(result.hit.damage * params.chipRate) : 0;
+      const d = fighters[defender];
+      if (chip > 0 && d.health > 1) fighters[defender] = { ...d, health: Math.max(1, d.health - chip) };
       events.push({ type: 'block', attacker, damage: 0 });
     } else {
       const d = fighters[defender];
-      const health = Math.max(0, d.health - result.hit.damage);
+      // 連続技：攻撃側の今の技で最初に当たった当たりなら技の数を増やす。2つ目の技からは補正（多段技のヒット同士は補正しない）
+      const firstOfMove = !moved[attacker].hitDone.some(Boolean);
+      const combo = { moves: d.combo.moves + (firstOfMove ? 1 : 0), hits: d.combo.hits + 1 };
+      const damage = combo.moves >= 2 ? Math.floor(result.hit.damage * params.comboDamageRate) : result.hit.damage;
+      const health = Math.max(0, d.health - damage);
       // 空中で食らったら落下（y はそのまま）。ただし倒れる一撃なら、KO 画面で宙に浮かないようすぐ地面に倒す。
       // 地上で knockdown の技ならダウン。それ以外はのけぞり
       const knockdown: FighterState = { name: 'knockdown', frame: 0, duration: params.knockdownFrames };
-      const wasAir = d.state.name === 'air';
+      const wasAir = isAirborne(d);
       const state: FighterState =
         wasAir && health === 0 ? knockdown
         : wasAir ? { name: 'airHit', frame: 0 }
         : result.hit.knockdown ? knockdown
         : { name: 'hitstun', frame: 0, duration: weight.hitstun, crouch: isCrouching(d) };
-      fighters[defender] = { ...d, health, y: wasAir && health === 0 ? 0 : d.y, state };
-      events.push({ type: 'hit', attacker, damage: result.hit.damage });
+      fighters[defender] = { ...d, health, combo, y: wasAir && health === 0 ? 0 : d.y, state };
+      events.push({ type: 'hit', attacker, damage });
     }
     const distance = weight.knockback * (result.blocked ? params.blockKnockbackRate : 1);
     const [pushedAttacker, pushedDefender] = applyKnockback(fighters[attacker], fighters[defender], distance, params);
@@ -82,16 +139,34 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     fighters[defender] = pushedDefender;
   });
 
-  return { frame: b.frame + 1, fighters, events };
+  // ノックバックのあとにも、2人の距離の上限をかけ直す（画面端は applyKnockback の clampX が守る）
+  const limited = limitDistance(fighters, beforeKnockback, params);
+  return { frame: b.frame + 1, fighters: limited, events };
+}
+
+function markHitDone(f: Fighter, index: number): Fighter {
+  const hitDone = f.hitDone.slice();
+  hitDone[index] = true;
+  return { ...f, hitDone };
 }
 
 /** 攻撃側の攻撃の箱が、守る側の食らいの箱に重なったか。重なったらガードできたかも返す */
-function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; blocked: boolean } | null {
+function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; index: number; blocked: boolean; armored: boolean } | null {
   const active = activeHitbox(attacker);
   if (!active || !isHittable(defender)) return null;
+  // 地上だけに当たる当たり（衝撃波）は、空中の相手には当たらない
+  if (active.hit.groundOnly && isAirborne(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
-  const blocked = defender.state.name === 'guard' || defender.state.name === 'blockstun';
-  return { hit: active.hit, blocked };
+  const blocked = attacker.guardLocked || defender.state.name === 'guard' || defender.state.name === 'blockstun';
+  return { hit: active.hit, index: active.index, blocked, armored: isArmored(defender) };
+}
+
+/** 守る側が今、アーマーで打撃を耐えられるか（技のアーマー区間の中で、耐えられる数が残っている） */
+function isArmored(defender: Fighter): boolean {
+  const cur = currentAttack(defender);
+  if (!cur || defender.armorLeft <= 0) return false;
+  const armor = getMove(defender.char, cur.move).armor;
+  return !!armor && cur.frame >= armor.frames.from && cur.frame <= armor.frames.to;
 }
 
 /** ノックバックの向き。相手が右なら 1、左なら -1、同じ位置なら攻撃側の向き */

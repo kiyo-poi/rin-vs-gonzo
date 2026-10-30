@@ -1,17 +1,14 @@
-import { clampX } from './fighter';
+import { clampX, isAirborne } from './fighter';
 import type { Fighter, Params } from './types';
 
-/** 押し合うのは地上にいる時だけ（空中なら重なってよい。相手を飛び越えられるように） */
-function onGround(f: Fighter): boolean {
-  return f.state.name !== 'air' && f.state.name !== 'airHit';
-}
 
 /**
  * 2人が重ならないように押し合う。prev は動かす前の2人（どちらが左か・誰が押したかを決めるのに使う）。
  * 片方だけが相手に向かって進んで重なったら、押された側は重なった分 × pushRate だけ動く。
  */
 export function resolvePush(moved: [Fighter, Fighter], prev: [Fighter, Fighter], params: Params): [Fighter, Fighter] {
-  if (!onGround(moved[0]) || !onGround(moved[1])) return moved;
+  // 押し合うのは地上にいる時だけ（空中なら重なってよい。相手を飛び越えられるように）
+  if (isAirborne(moved[0]) || isAirborne(moved[1])) return moved;
 
   // どちらが左か。同じ位置なら、動かす前の並びで決める
   const left: 0 | 1 = moved[0].x !== moved[1].x ? (moved[0].x < moved[1].x ? 0 : 1) : prev[0].x <= prev[1].x ? 0 : 1;
