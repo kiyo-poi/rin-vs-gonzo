@@ -53,6 +53,11 @@ export class TitleScene implements Scene {
 
   update(input: FrameInput): void {
     this.frame++;
+    const audio = this.game.audio;
+    if (audio && input.players.some((p) => p.pressed.guard)) {
+      audio.setBgmEnabled(!audio.isBgmEnabled());
+      audio.playUi('move');
+    }
     if (input.players.some((p) => p.pressed.punch)) {
       this.game.audio?.playUi('decide');
       this.game.stack.replace(new ModeScene(this.game));
@@ -79,6 +84,7 @@ export class TitleScene implements Scene {
       ctx.fillText('PRESS START（パンチで開始）', ctx.canvas.width / 2, 360);
     }
     drawBothControls(ctx, this.game.controls, 520);
+    drawHint(ctx, `BGM：${this.game.audio?.isBgmEnabled() === false ? 'OFF' : 'ON'}　（ガードで ON/OFF・ポーズ画面 Esc でも切り替え）`, 690);
   }
 }
 
@@ -322,10 +328,13 @@ export class PauseScene implements Scene {
   ) {}
 
   update(input: FrameInput): void {
-    const r = stepMenu(this.index, 3, input.players);
+    const r = stepMenu(this.index, 4, input.players);
     menuSound(this.game, this.index, r);
     this.index = r.index;
-    if (input.pause || r.cancelled || (r.decided && this.index === 0)) this.game.stack.pop();
+    if (r.decided && this.index === 3) {
+      const audio = this.game.audio;
+      audio?.setBgmEnabled(!audio.isBgmEnabled());
+    } else if (input.pause || r.cancelled || (r.decided && this.index === 0)) this.game.stack.pop();
     else if (r.decided && this.index === 1) this.game.stack.replace(new SelectScene(this.game, this.config.mode, this.config.level));
     else if (r.decided) this.game.stack.replace(new TitleScene(this.game));
   }
@@ -341,7 +350,7 @@ export class PauseScene implements Scene {
     ctx.textAlign = 'center';
     ctx.font = 'bold 56px sans-serif';
     ctx.fillText('PAUSE', width / 2, 110);
-    drawMenu(ctx, ['再開', 'キャラ選択へ', 'タイトルへ'], this.index, width / 2, 190, 48);
+    drawMenu(ctx, ['再開', 'キャラ選択へ', 'タイトルへ', `BGM：${this.game.audio?.isBgmEnabled() === false ? 'OFF' : 'ON'}`], this.index, width / 2, 170, 42);
     const chars = resolveChars(this.game.roster, this.config.chars);
     ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'left';

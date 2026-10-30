@@ -75,6 +75,22 @@ export interface Audio {
   playSound(name: SoundName): void;
   startBgm(name: BgmName): void;
   stopBgm(): void;
+  /** BGM の ON/OFF（効果音は変わらない）。選んだ状態は localStorage に覚える */
+  setBgmEnabled(on: boolean): void;
+  isBgmEnabled(): boolean;
+}
+
+export const BGM_STORAGE_KEY = 'fighting-game.bgm';
+
+/** 覚えている BGM の ON/OFF。読めない・無い時は ON */
+export function loadBgmEnabled(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(BGM_STORAGE_KEY) !== 'off';
+  } catch { return true; }
+}
+
+function saveBgmEnabled(on: boolean): void {
+  try { globalThis.localStorage?.setItem(BGM_STORAGE_KEY, on ? 'on' : 'off'); } catch { /* 覚えられなくても続ける */ }
 }
 
 // ---- 合成 ----
@@ -167,6 +183,7 @@ export function createAudio(): Audio {
   let bgmTimer: ReturnType<typeof setInterval> | null = null;
   let bgmStep = 0;
   let bgmNext = 0;
+  let bgmEnabled = loadBgmEnabled();
 
   const ready = (): boolean => ctx !== null && ctx.state === 'running';
 
@@ -230,7 +247,7 @@ export function createAudio(): Audio {
 
   function runBgm(): void {
     if (bgmTimer !== null) { clearInterval(bgmTimer); bgmTimer = null; }
-    if (!ready() || !ctx || !wantedBgm) return;
+    if (!bgmEnabled || !ready() || !ctx || !wantedBgm) return;
     bgmStep = 0;
     bgmNext = ctx.currentTime + 0.05;
     try {
@@ -289,6 +306,15 @@ export function createAudio(): Audio {
     stopBgm() {
       wantedBgm = null;
       if (bgmTimer !== null) { clearInterval(bgmTimer); bgmTimer = null; }
+    },
+    setBgmEnabled(on) {
+      bgmEnabled = on;
+      saveBgmEnabled(on);
+      if (on) runBgm();
+      else if (bgmTimer !== null) { clearInterval(bgmTimer); bgmTimer = null; }
+    },
+    isBgmEnabled() {
+      return bgmEnabled;
     },
   };
 }

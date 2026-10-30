@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAudio, VOLUME, noteFreq, RECIPES, soundForEvent, soundForPhaseMessage, SONGS } from '../src/audio/audio';
+import { BGM_STORAGE_KEY, loadBgmEnabled, createAudio, VOLUME, noteFreq, RECIPES, soundForEvent, soundForPhaseMessage, SONGS } from '../src/audio/audio';
 
 describe('soundForEvent', () => {
   const table: Array<[{ type: string; weight?: string; damage?: number }, string | null]> = [
@@ -86,5 +86,34 @@ describe('音量', () => {
   });
   it('効果音は以前（0.8）の半分程度', () => {
     expect(VOLUME.sfx).toBeLessThanOrEqual(0.4);
+  });
+});
+
+describe('BGM の ON/OFF', () => {
+  it('AudioContext も localStorage も無い環境でも壊れず、既定は ON', () => {
+    expect(loadBgmEnabled()).toBe(true);
+    const a = createAudio();
+    expect(a.isBgmEnabled()).toBe(true);
+    a.setBgmEnabled(false);
+    expect(a.isBgmEnabled()).toBe(false);
+    a.startBgm('title');
+    a.setBgmEnabled(true);
+    expect(a.isBgmEnabled()).toBe(true);
+    a.stopBgm();
+  });
+  it('localStorage に覚え、読めない時は ON', () => {
+    const store: Record<string, string> = {};
+    (globalThis as any).localStorage = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => { store[k] = v; } };
+    try {
+      createAudio().setBgmEnabled(false);
+      expect(store[BGM_STORAGE_KEY]).toBe('off');
+      expect(loadBgmEnabled()).toBe(false);
+      expect(createAudio().isBgmEnabled()).toBe(false);
+      (globalThis as any).localStorage = { getItem: () => { throw new Error('x'); }, setItem: () => { throw new Error('x'); } };
+      expect(loadBgmEnabled()).toBe(true);
+      expect(() => createAudio().setBgmEnabled(false)).not.toThrow();
+    } finally {
+      delete (globalThis as any).localStorage;
+    }
   });
 });
