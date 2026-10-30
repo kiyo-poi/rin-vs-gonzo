@@ -15,5 +15,10 @@
   "stage": { "width": 1920, "edgeMargin": 60, "startDistance": 480 },
   "screen": { "width": 1280 },
   "round": { "timeFrames": 5940, "introFrames": 120, "endFrames": 90, "winsToWin": 2, "maxRounds": 5 },
-  "render": { "groundY": 620 }
+  "render": { "groundY": 620 },
+  "cpu": {
+    "easy": { "reaction": 30, "guardRate": 0.2, "specialRate": 0.05 },
+    "normal": { "reaction": 18, "guardRate": 0.5, "specialRate": 0.25 },
+    "hard": { "reaction": 10, "guardRate": 0.8, "specialRate": 0.5 }
+  }
 }
