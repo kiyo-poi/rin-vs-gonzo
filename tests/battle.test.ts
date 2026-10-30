@@ -42,7 +42,7 @@ describe('ヒット', () => {
   });
 
   it('当たった相手はのけぞる（軽：14F）。のけぞりが終わる20F目から動ける', () => {
-    expect(t[4].fighters[1].state).toEqual({ name: 'hitstun', frame: 0, duration: 14 });
+    expect(t[4].fighters[1].state).toEqual({ name: 'hitstun', frame: 0, duration: 14, crouch: false });
     const recover = play([400, 500], 20, (i) => [
       i === 1 ? inputOf([], ['punch']) : NONE,
       i >= 6 ? inputOf([], ['punch']) : NONE,
@@ -89,7 +89,7 @@ describe('ガード', () => {
 
   it('ガードしたらガード硬直（軽：10F）になる', () => {
     expect(t[4].events).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
-    expect(t[4].fighters[1].state).toEqual({ name: 'blockstun', frame: 0, duration: 10 });
+    expect(t[4].fighters[1].state).toEqual({ name: 'blockstun', frame: 0, duration: 10, crouch: false });
   });
 });
 

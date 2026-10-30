@@ -40,8 +40,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
 
   battle.fighters.forEach((f, i) => {
     ctx.fillStyle = COLORS[i];
-    // 起き上がり無敵の間は2フレームに1回だけ描いて点滅させる
-    const hidden = f.invincible > 0 && battle.frame % 2 === 1;
+    // 起き上がり無敵の間は2フレームに1回だけ描いて点滅させる。決着表示中は battle.frame が止まるので、点滅させない
+    const hidden = match.phase === 'fight' && f.invincible > 0 && battle.frame % 2 === 1;
     const boxes = hidden ? [] : f.state.name === 'knockdown' ? [lyingBox(f)] : hurtBoxes(f);
     for (const box of boxes) {
       const s = toScreen(box);

@@ -67,9 +67,9 @@ describe('食らいの箱', () => {
 
 describe('のけぞり・ガード硬直', () => {
   it('duration のフレームが過ぎるまで動けない', () => {
-    let f: Fighter = { ...createFighter(proto, 400, 1), state: { name: 'hitstun', frame: 0, duration: 14 } };
+    let f: Fighter = { ...createFighter(proto, 400, 1), state: { name: 'hitstun', frame: 0, duration: 14, crouch: false } };
     for (let i = 0; i < 14; i++) f = stepFighter(f, inputOf(['right'], ['punch']), 900, params);
-    expect(f.state).toEqual({ name: 'hitstun', frame: 14, duration: 14 });
+    expect(f.state).toEqual({ name: 'hitstun', frame: 14, duration: 14, crouch: false });
     expect(f.x).toBe(400);
     f = stepFighter(f, inputOf([], ['punch']), 900, params);
     expect(f.state).toEqual({ name: 'attack', frame: 1, move: 'punch' });

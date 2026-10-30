@@ -134,10 +134,13 @@ export type FighterState =
       attack: { move: MoveSlot; frame: number } | null;
       /** このジャンプで出した空中技（1ジャンプに1回だけ出せる） */
       used: MoveSlot | null;
+      /** 相打ちで弾かれた時の残りフレーム（0 なら弾かれていない）。着地の隙はこれ以上の長さにする */
+      recoilLeft: number;
     }
   | { name: 'landing'; frame: number; duration: number }
   | { name: 'attack'; frame: number; move: MoveSlot }
-  | { name: 'hitstun' | 'blockstun'; frame: number; duration: number }
+  /** crouch は食らった・ガードした時にしゃがんでいたか（食らいの箱をしゃがみにする） */
+  | { name: 'hitstun' | 'blockstun'; frame: number; duration: number; crouch: boolean }
   /** 相打ちで弾かれた（食らいの箱は立ち） */
   | { name: 'recoil'; frame: number; duration: number }
   /** ダウン（frame 0 で入り、duration を超えたフレームで起き上がる） */

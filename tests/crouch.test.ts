@@ -55,3 +55,55 @@ describe('しゃがみガード', () => {
     expect(b.fighters[1].health).toBe(850);
   });
 });
+
+describe('しゃがみの姿勢は硬直中も保つ', () => {
+  /** 2P が guardInput で構え、1P が1F目にキック。キックは9F目に当たる */
+  function blockKick(guardInput: ReturnType<typeof inputOf>) {
+    let b = createBattle([proto, proto], params, [400, 500]);
+    for (let i = 1; i <= 9; i++) b = stepBattle(b, [i === 1 ? inputOf([], ['kick']) : NONE, guardInput], params);
+    return b;
+  }
+
+  it('しゃがみガードでキックを受けたら、ガード硬直中もしゃがみの食らいの箱（高さ 100）', () => {
+    const b = blockKick(inputOf(['down', 'guard']));
+    expect(b.events).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(b.fighters[1].state).toMatchObject({ name: 'blockstun', crouch: true });
+    expect(hurtBoxes(b.fighters[1])[0].h).toBe(100);
+  });
+
+  it('立ちガードで受けたら、ガード硬直中も立ちの箱（高さ 160）', () => {
+    const b = blockKick(inputOf(['guard']));
+    expect(b.fighters[1].state).toMatchObject({ name: 'blockstun', crouch: false });
+    expect(hurtBoxes(b.fighters[1])[0].h).toBe(160);
+  });
+
+  it('しゃがみで食らったら、のけぞり中もしゃがみの箱', () => {
+    let b = createBattle([proto, proto], params, [400, 500]);
+    for (let i = 1; i <= 9; i++) b = stepBattle(b, [i === 1 ? inputOf([], ['kick']) : NONE, inputOf(['down'])], params);
+    expect(b.fighters[1].state).toMatchObject({ name: 'hitstun', crouch: true });
+    expect(hurtBoxes(b.fighters[1])[0].h).toBe(100);
+  });
+
+  it('しゃがみ技の最中に食らっても、のけぞり中はしゃがみの箱', () => {
+    let b = createBattle([proto, proto], params, [400, 500]);
+    for (let i = 1; i <= 9; i++) {
+      b = stepBattle(b, [i === 1 ? inputOf([], ['kick']) : NONE, i === 5 ? inputOf(['down'], ['punch']) : NONE], params);
+    }
+    expect(b.fighters[1].state).toMatchObject({ name: 'hitstun', crouch: true });
+  });
+
+  it('リンのジャブ（y 100〜120）は、しゃがみのガード硬直中のリンには当たらない。立ちなら当たる', () => {
+    const jab = (crouch: boolean) => {
+      let b = createBattle([proto, proto], params, [400, 450]);
+      b = { ...b, fighters: [b.fighters[0], { ...b.fighters[1], state: { name: 'blockstun', frame: 1, duration: 14, crouch } }] };
+      const events: unknown[] = [];
+      for (let i = 1; i <= 8; i++) {
+        b = stepBattle(b, [i === 1 ? inputOf([], ['punch']) : NONE, NONE], params);
+        events.push(...b.events);
+      }
+      return events;
+    };
+    expect(jab(true)).toEqual([]);
+    expect(jab(false)).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+  });
+});

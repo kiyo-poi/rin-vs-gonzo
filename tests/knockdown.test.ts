@@ -76,6 +76,21 @@ describe('空中で食らう', () => {
     expect(t[at(i + 1)].fighters[1]).toMatchObject({ y: 0, state: { name: 'knockdown', frame: 1, duration: 40 } });
   });
 
+  it('空中で食らって体力が 0 になったら、すぐ地面に倒れる（空中で止まらない）', () => {
+    let b = createBattle([proto, proto], params, [400, 500]);
+    b = { ...b, fighters: [b.fighters[0], { ...b.fighters[1], health: 30 }] };
+    for (let i = 1; i <= 5; i++) b = stepBattle(b, jumpHit(i), params);
+    expect(b.events).toEqual([{ type: 'hit', attacker: 0, damage: 30 }]);
+    expect(b.fighters[1]).toMatchObject({ health: 0, y: 0, state: { name: 'knockdown', frame: 0, duration: 40 } });
+  });
+
+  it('空中で食らっても体力が残るなら、今までどおり落下する', () => {
+    let b = createBattle([proto, proto], params, [400, 500]);
+    for (let i = 1; i <= 5; i++) b = stepBattle(b, jumpHit(i), params);
+    expect(b.fighters[1].state).toEqual({ name: 'airHit', frame: 0 });
+    expect(b.fighters[1].y).toBeGreaterThan(0);
+  });
+
   it('落下中は追撃できない：airHit の間は isHittable が false', () => {
     const t = play([400, 500], 60, jumpHit);
     const falling = t.filter((b) => b.fighters[1].state.name === 'airHit');

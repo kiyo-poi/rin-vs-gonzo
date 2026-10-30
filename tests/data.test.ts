@@ -68,6 +68,17 @@ describe('キャラデータ', () => {
     }
   });
 
+  it('全技の姿勢は、パンチ・キックが stand、しゃがみが crouch、空中が air', () => {
+    const expected: Record<MoveSlot, string> = {
+      punch: 'stand', kick: 'stand', crouchPunch: 'crouch', crouchKick: 'crouch', airPunch: 'air', airKick: 'air',
+    };
+    for (const [id, char] of Object.entries(characters)) {
+      for (const [slot, posture] of Object.entries(expected)) {
+        expect(char.moves[slot as MoveSlot].posture, `${id}.${slot}`).toBe(posture);
+      }
+    }
+  });
+
   it('足払い・ローキック払いはダウン属性、ドロップキックは着地の隙 20F', () => {
     expect(lin.moves.crouchKick.hits[0].knockdown).toBe(true);
     expect(gonzo.moves.crouchKick.hits[0].knockdown).toBe(true);

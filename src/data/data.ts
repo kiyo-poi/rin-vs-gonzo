@@ -3,7 +3,7 @@ import paramsJson from './params.json';
 import controlsJson from './controls.json';
 
 // JSON の文字列（"light" など）は型の上ではただの string なので、ここで型を付ける。
-// 中身の検査は M3 でキャラデータが増えた時に入れる（08_architecture.md「データの検査」）
+// 中身の検査（08_architecture.md「データの検査」）はまだ入れていない。追加する時はここで行う
 export const params = paramsJson as unknown as Params;
 export const controls = controlsJson as unknown as Controls;
 

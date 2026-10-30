@@ -35,10 +35,24 @@ export function isHittable(f: Fighter): boolean {
   return f.state.name !== 'knockdown' && f.state.name !== 'airHit' && f.invincible <= 0;
 }
 
-/** 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技だけ消えて、そのまま落ち続ける（used は残す） */
+/** 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技が消えて落ち続け、着地しても弾かれた時間が終わるまで動けない（used は残す） */
 export function clashRecoil(f: Fighter, params: Params): Fighter {
-  if (f.state.name === 'air') return { ...f, moveHasHit: true, state: { ...f.state, attack: null } };
+  if (f.state.name === 'air') {
+    // 空中の側も地上の側と同じ時間だけ動けなくする：空中技を消し、着地の隙を弾かれた時間以上にする
+    return { ...f, moveHasHit: true, state: { ...f.state, attack: null, recoilLeft: params.clashRecoil } };
+  }
   return { ...f, moveHasHit: true, state: { name: 'recoil', frame: 0, duration: params.clashRecoil } };
+}
+
+/** しゃがんでいるか。食らった・ガードした時の姿勢を、硬直中も保つために使う */
+export function isCrouching(f: Fighter): boolean {
+  const st = f.state;
+  return (
+    st.name === 'crouch' ||
+    (st.name === 'guard' && st.crouch) ||
+    ((st.name === 'hitstun' || st.name === 'blockstun') && st.crouch) ||
+    (st.name === 'attack' && f.char.moves[st.move].posture === 'crouch')
+  );
 }
 
 /** 食らいの箱（ステージ座標）。しゃがみ・空中・それ以外（立ち）で使い分ける */
@@ -47,7 +61,7 @@ export function hurtBoxes(f: Fighter): Box[] {
   const st = f.state;
   const posture: Posture =
     st.name === 'attack' ? f.char.moves[st.move].posture
-    : st.name === 'crouch' || (st.name === 'guard' && st.crouch) ? 'crouch'
+    : isCrouching(f) ? 'crouch'
     : st.name === 'air' || st.name === 'airHit' ? 'air'
     : 'stand';
   const local = hurt[posture];
@@ -104,7 +118,7 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
         ...f,
         x: clampX(f.x + st.dir * jumpForwardSpeed, params),
         y: jumpY(1, jumpAirFrames, jumpHeight),
-        state: { name: 'air', frame: 1, dir: st.dir, attack: null, used: null },
+        state: { name: 'air', frame: 1, dir: st.dir, attack: null, used: null, recoilLeft: 0 },
       };
     }
     case 'air': {
@@ -128,12 +142,12 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
           moveHasHit,
           x: clampX(f.x + st.dir * jumpForwardSpeed, params),
           y: jumpY(frame, jumpAirFrames, jumpHeight),
-          state: { name: 'air', frame, dir: st.dir, attack, used },
+          state: { name: 'air', frame, dir: st.dir, attack, used, recoilLeft: Math.max(0, st.recoilLeft - 1) },
         };
       }
       // 空中技を出していたら着地の隙（このフレームは入力を受け付けない）
       if (st.used) {
-        const duration = f.char.moves[st.used].landingRecovery ?? params.airLandingRecovery;
+        const duration = Math.max(f.char.moves[st.used].landingRecovery ?? params.airLandingRecovery, st.recoilLeft);
         return { ...f, y: 0, moveHasHit: false, state: { name: 'landing', frame: 1, duration } };
       }
       // 出していなければ、着地したフレームからそのまま自由に動ける（入力を受け付け、向きも更新する）
@@ -174,7 +188,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
 
 /**
  * 押し合いのあとの位置で、相手の方を向き直す（08_architecture.md 2.4 の6番）。
- * 振り向けるのは自由に動ける状態と、このフレームに技・ジャンプ準備を始めた時だけ。
+ * 振り向けるのは自由に動ける状態と、このフレームに技・ジャンプ準備を始めた時、着地した瞬間だけ。
  * 空中・技の途中・のけぞり・ガード硬直では向きを変えない。同じ位置なら今の向きのまま
  */
 export function faceOpponent(f: Fighter, opponentX: number): Fighter {
@@ -185,6 +199,7 @@ export function faceOpponent(f: Fighter, opponentX: number): Fighter {
     st.name === 'walkBack' ||
     st.name === 'crouch' ||
     st.name === 'guard' ||
+    (st.name === 'landing' && st.frame === 1) ||
     ((st.name === 'attack' || st.name === 'jumpSquat') && st.frame === 1);
   if (!canTurn || opponentX === f.x) return f;
   const facing: 1 | -1 = opponentX > f.x ? 1 : -1;

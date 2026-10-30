@@ -41,13 +41,13 @@ describe('ノックバック', () => {
   it('中（キック）：ヒットで 35px、のけぞり 18F', () => {
     const t = play(P, [400, 500], 9, kickAt1);
     expect(t[8].fighters[1].x).toBe(535);
-    expect(t[8].fighters[1].state).toEqual({ name: 'hitstun', frame: 0, duration: 18 });
+    expect(t[8].fighters[1].state).toEqual({ name: 'hitstun', frame: 0, duration: 18, crouch: false });
   });
 
   it('中（キック）：ガードで 42px、ガード硬直 13F', () => {
     const t = play(P, [400, 500], 9, (i) => [i === 1 ? inputOf([], ['kick']) : NONE, inputOf(['guard'])]);
     expect(t[8].fighters[1].x).toBe(542);
-    expect(t[8].fighters[1].state).toEqual({ name: 'blockstun', frame: 0, duration: 13 });
+    expect(t[8].fighters[1].state).toEqual({ name: 'blockstun', frame: 0, duration: 13, crouch: false });
   });
 
   it('重：ヒットで 60px、のけぞり 24F の間は動けない', () => {
@@ -64,7 +64,7 @@ describe('ノックバック', () => {
   it('重：ガードで 72px、ガード硬直 17F', () => {
     const t = play([heavyPuncher, proto], [400, 500], 5, (i) => [i === 1 ? inputOf([], ['punch']) : NONE, inputOf(['guard'])]);
     expect(t[4].fighters[1].x).toBe(572);
-    expect(t[4].fighters[1].state).toEqual({ name: 'blockstun', frame: 0, duration: 17 });
+    expect(t[4].fighters[1].state).toEqual({ name: 'blockstun', frame: 0, duration: 17, crouch: false });
   });
 });
 

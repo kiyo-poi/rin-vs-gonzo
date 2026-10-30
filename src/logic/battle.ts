@@ -1,5 +1,5 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, clashRecoil, createFighter, faceOpponent, hurtBoxes, isHittable, stepFighter } from './fighter';
+import { activeHitbox, clampX, clashRecoil, createFighter, faceOpponent, hurtBoxes, isCrouching, isHittable, stepFighter } from './fighter';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
@@ -58,17 +58,22 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     if (result.blocked) {
       fighters[defender] = {
         ...fighters[defender],
-        state: { name: 'blockstun', frame: 0, duration: weight.blockstun },
+        state: { name: 'blockstun', frame: 0, duration: weight.blockstun, crouch: isCrouching(fighters[defender]) },
       };
       events.push({ type: 'block', attacker, damage: 0 });
     } else {
       const d = fighters[defender];
-      // 空中で食らったら落下（y はそのまま）。地上で knockdown の技ならダウン。それ以外はのけぞり
+      const health = Math.max(0, d.health - result.hit.damage);
+      // 空中で食らったら落下（y はそのまま）。ただし倒れる一撃なら、KO 画面で宙に浮かないようすぐ地面に倒す。
+      // 地上で knockdown の技ならダウン。それ以外はのけぞり
+      const knockdown: FighterState = { name: 'knockdown', frame: 0, duration: params.knockdownFrames };
+      const wasAir = d.state.name === 'air';
       const state: FighterState =
-        d.state.name === 'air' ? { name: 'airHit', frame: 0 }
-        : result.hit.knockdown ? { name: 'knockdown', frame: 0, duration: params.knockdownFrames }
-        : { name: 'hitstun', frame: 0, duration: weight.hitstun };
-      fighters[defender] = { ...d, health: Math.max(0, d.health - result.hit.damage), state };
+        wasAir && health === 0 ? knockdown
+        : wasAir ? { name: 'airHit', frame: 0 }
+        : result.hit.knockdown ? knockdown
+        : { name: 'hitstun', frame: 0, duration: weight.hitstun, crouch: isCrouching(d) };
+      fighters[defender] = { ...d, health, y: wasAir && health === 0 ? 0 : d.y, state };
       events.push({ type: 'hit', attacker, damage: result.hit.damage });
     }
     const distance = weight.knockback * (result.blocked ? params.blockKnockbackRate : 1);
