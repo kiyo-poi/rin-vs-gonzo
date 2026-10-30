@@ -1,10 +1,11 @@
+import { isArmored } from '../logic/battle';
 import { activeHitbox, hurtBoxes } from '../logic/fighter';
 import { timerSeconds, type Match } from '../logic/match';
 import type { Box, Fighter, Params } from '../logic/types';
 import { cameraX } from './camera';
 import { shakeOffset, type Effect, type EffectsState } from './effects';
 import type { Trail } from './healthTrail';
-import { phaseMessage } from './hud';
+import { comboLabel, gaugeView, phaseMessage, THROWN_LIFT } from './hud';
 import { drawFallbackFighter } from './characterDraw';
 import { drawFighterSprite, poseFor, TINT_2P, type SpriteStore } from './sprites';
 
@@ -64,11 +65,19 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
     const hidden = match.phase === 'fight' && f.invincible > 0 && battle.frame % 2 === 1;
     if (!hidden) {
       const screenX = f.x - camX;
-      const feetY = groundY - f.y;
+      // 投げられている間は少し持ち上げる
+      const feetY = groundY - f.y - (f.state.name === 'thrown' ? THROWN_LIFT : 0);
       const img = view.sprites?.get(f.char.id, poseFor(f)) ?? null;
+      ctx.save();
+      // アーマー中は白い縁取り（白い影をぼかして輪郭に沿わせる）
+      if (isArmored(f)) {
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 14;
+      }
       // 同じキャラ同士の時だけ 2P を色違いにする
       if (img) drawFighterSprite(ctx, img, f, screenX, feetY, 1, mirror && i === 1 ? TINT_2P : undefined);
       else drawFallbackFighter(ctx, f, screenX, feetY, mirror && i === 1 ? 1 : 0);
+      ctx.restore();
     }
 
     if (debug.show) {
@@ -96,7 +105,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
 
   battle.fighters.forEach((f, i) => {
     drawHealth(ctx, f, i, width, view.trails[i]);
-    drawGauge(ctx, f, i, width, height, params);
+    drawGauge(ctx, f, i, width, height, battle.frame, params);
+    // 連続技：守る側の受けたヒット数を、当てた側（体力バーの下）に出す
+    const label = comboLabel(f);
+    if (label) drawCombo(ctx, label, (1 - i) as 0 | 1, width);
   });
   drawHud(ctx, match, params, width);
 
@@ -185,16 +197,44 @@ function drawEffect(ctx: CanvasRenderingContext2D, e: Effect, sx: number, sy: nu
   ctx.restore();
 }
 
-/** 超必殺のゲージ。画面の下、1P は左・2P は右。満タンで色が変わる */
-function drawGauge(ctx: CanvasRenderingContext2D, f: Fighter, index: number, width: number, height: number, params: Params): void {
+/** 超必殺のゲージ。画面の下、1P は左・2P は右（中央側から伸びる）。満タンで光って点滅する（05_screens.md） */
+function drawGauge(ctx: CanvasRenderingContext2D, f: Fighter, index: number, width: number, height: number, frame: number, params: Params): void {
   const barW = 300;
   const barH = 14;
   const top = height - 80;
   const x = index === 0 ? HEALTH_BAR.side : width - HEALTH_BAR.side - barW;
+  const g = gaugeView(f.gauge, frame, params);
+  ctx.save();
   ctx.fillStyle = '#113';
   ctx.fillRect(x, top, barW, barH);
-  const full = f.gauge >= params.gauge.max;
-  ctx.fillStyle = full ? '#6ff' : '#36c';
-  const w = (barW * f.gauge) / params.gauge.max;
+  if (g.glow) {
+    ctx.shadowColor = '#6ff';
+    ctx.shadowBlur = 16;
+  }
+  ctx.fillStyle = g.full ? (g.glow ? '#cff' : '#6ff') : '#36c';
+  const w = barW * g.ratio;
   ctx.fillRect(index === 0 ? x : x + barW - w, top, w, barH);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, top, barW, barH);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = index === 0 ? 'left' : 'right';
+  ctx.fillText(g.full ? 'SUPER OK' : 'SUPER', index === 0 ? x : x + barW, top - 6);
+  ctx.restore();
+}
+
+/** 「N HIT」を当てた側（attacker）の体力バーの下に出す */
+function drawCombo(ctx: CanvasRenderingContext2D, label: string, attacker: 0 | 1, width: number): void {
+  ctx.save();
+  ctx.font = 'bold 32px sans-serif';
+  ctx.textAlign = attacker === 0 ? 'left' : 'right';
+  const x = attacker === 0 ? HEALTH_BAR.side : width - HEALTH_BAR.side;
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText(label, x, 130);
+  ctx.fillStyle = '#fd3';
+  ctx.fillText(label, x, 130);
+  ctx.restore();
 }

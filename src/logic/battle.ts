@@ -196,7 +196,7 @@ function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; in
 }
 
 /** 守る側が今、アーマーで打撃を耐えられるか（技のアーマー区間の中で、耐えられる数が残っている） */
-function isArmored(defender: Fighter): boolean {
+export function isArmored(defender: Fighter): boolean {
   const cur = currentAttack(defender);
   if (!cur || defender.armorLeft <= 0) return false;
   const armor = getMove(defender.char, cur.move).armor;
