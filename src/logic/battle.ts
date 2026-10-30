@@ -1,9 +1,9 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, clashRecoil, createFighter, currentAttack, faceOpponent, hurtBoxes, isAirborne, getMove, isCrouching, isHittable, stepFighter } from './fighter';
+import { activeHitbox, clampX, clashRecoil, createFighter, currentAttack, faceOpponent, hurtBoxes, isAirborne, getMove, isCrouching, isHittable, startMove, stepFighter } from './fighter';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
-export type BattleEvent = { type: 'hit' | 'block'; attacker: 0 | 1; damage: number } | { type: 'clash' };
+export type BattleEvent = { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number } | { type: 'clash' };
 
 export interface Battle {
   frame: number;
@@ -38,8 +38,9 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
   // 両者とも「動かしたあとの同じ状態」で調べる（1P が先に処理されて有利にならないように）
   const results = [resolveAttack(moved[0], moved[1]), resolveAttack(moved[1], moved[0])];
 
-  // 両者の攻撃が同時に届いたら相打ち。ダメージ・ガード・ノックバックなしで両者が弾かれる
-  if (results[0] && results[1]) {
+  // 両者の攻撃が同時に届いたら相打ち。ダメージ・ガード・ノックバックなしで両者が弾かれる。
+  // ただし片方がアーマーで耐えられるなら相打ちにせず、アーマー側が耐えてアーマー側の打撃が当たる（08 2.4 の3番）
+  if (results[0] && results[1] && !results[0].armored && !results[1].armored) {
     return {
       frame: b.frame + 1,
       fighters: [clashRecoil(moved[0], params), clashRecoil(moved[1], params)],
@@ -50,12 +51,26 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
   const fighters: [Fighter, Fighter] = [moved[0], moved[1]];
   const beforeKnockback: [Fighter, Fighter] = [moved[0], moved[1]];
   const events: BattleEvent[] = [];
+  // 当たった当たりは先に全部済みにする（耐えた側が派生技に移っても、攻撃側の記録が混ざらないように）
+  results.forEach((result, i) => {
+    if (result) fighters[i] = markHitDone(fighters[i], result.index);
+  });
   results.forEach((result, i) => {
     if (!result) return;
     const attacker = i as 0 | 1;
     const defender = (1 - i) as 0 | 1;
     const weight = params.weights[result.hit.weight];
-    fighters[attacker] = markHitDone(fighters[attacker], result.index);
+    if (result.armored) {
+      // アーマーで耐える：被ダメージは割合だけ、のけぞり・ノックバックなし。耐えられる数を1つ減らし、派生技があれば移る
+      const d = fighters[defender];
+      const damage = Math.floor(result.hit.damage * (d.char.stats.armorDamageRate ?? 1));
+      const cur = currentAttack(d);
+      const onAbsorb = cur ? getMove(d.char, cur.move).armor?.onAbsorb : undefined;
+      const absorbed = { ...d, health: Math.max(0, d.health - damage), armorLeft: d.armorLeft - 1 };
+      fighters[defender] = onAbsorb ? startMove(absorbed, onAbsorb, 0) : absorbed;
+      events.push({ type: 'armor', attacker, damage });
+      return;
+    }
     if (result.blocked) {
       // ガード固定の技は、1発目がガードされたら残りの当たりもガード扱いにする
       const cur = currentAttack(fighters[attacker]);
@@ -98,14 +113,22 @@ function markHitDone(f: Fighter, index: number): Fighter {
 }
 
 /** 攻撃側の攻撃の箱が、守る側の食らいの箱に重なったか。重なったらガードできたかも返す */
-function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; index: number; blocked: boolean } | null {
+function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; index: number; blocked: boolean; armored: boolean } | null {
   const active = activeHitbox(attacker);
   if (!active || !isHittable(defender)) return null;
   // 地上だけに当たる当たり（衝撃波）は、空中の相手には当たらない
   if (active.hit.groundOnly && isAirborne(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
   const blocked = attacker.guardLocked || defender.state.name === 'guard' || defender.state.name === 'blockstun';
-  return { hit: active.hit, index: active.index, blocked };
+  return { hit: active.hit, index: active.index, blocked, armored: isArmored(defender) };
+}
+
+/** 守る側が今、アーマーで打撃を耐えられるか（技のアーマー区間の中で、耐えられる数が残っている） */
+function isArmored(defender: Fighter): boolean {
+  const cur = currentAttack(defender);
+  if (!cur || defender.armorLeft <= 0) return false;
+  const armor = getMove(defender.char, cur.move).armor;
+  return !!armor && cur.frame >= armor.frames.from && cur.frame <= armor.frames.to;
 }
 
 /** ノックバックの向き。相手が右なら 1、左なら -1、同じ位置なら攻撃側の向き */

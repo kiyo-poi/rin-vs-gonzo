@@ -7,7 +7,8 @@
     "jumpAirFrames": 46,
     "jumpHeight": 170,
     "jumpForwardSpeed": 4,
-    "pushWidth": 80
+    "pushWidth": 80,
+    "armorDamageRate": 0.5
   },
   "boxes": {
     "hurt": {
@@ -181,16 +182,31 @@
           },
           "dx": 380
         }
-      ]
+      ],
+      "armor": {
+        "frames": {
+          "from": 17,
+          "to": 36
+        },
+        "hits": 1
+      }
     },
     "special": {
-      "name": "必殺（仮）",
+      "name": "マッスルポーズ",
       "posture": "stand",
-      "startup": 10,
-      "active": 2,
+      "startup": 4,
+      "active": 26,
       "recovery": 20,
       "hits": [],
-      "kind": "special"
+      "kind": "special",
+      "armor": {
+        "frames": {
+          "from": 5,
+          "to": 30
+        },
+        "hits": 1,
+        "onAbsorb": "counterPunch"
+      }
     },
     "downSpecial": {
       "name": "ヒップドロップ",
@@ -248,6 +264,28 @@
         "damage": 0,
         "techable": true
       }
+    }
+  },
+  "subMoves": {
+    "counterPunch": {
+      "name": "反撃パンチ",
+      "posture": "stand",
+      "startup": 8,
+      "active": 3,
+      "recovery": 16,
+      "hits": [
+        {
+          "damage": 100,
+          "weight": "heavy",
+          "box": {
+            "x": 30,
+            "y": 110,
+            "w": 100,
+            "h": 30
+          }
+        }
+      ],
+      "kind": "special"
     }
   }
 }

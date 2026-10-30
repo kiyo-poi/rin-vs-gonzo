@@ -11,6 +11,7 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     state: { name: 'idle', frame: 1 },
     hitDone: [],
     guardLocked: false,
+    armorLeft: 0,
     invincible: 0,
   };
 }
@@ -40,6 +41,12 @@ export function currentAttack(f: Fighter): { move: string; frame: number } | nul
 /** 技を始める時の hitDone（hits と同じ長さで全部 false） */
 function freshHitDone(move: MoveData): boolean[] {
   return move.hits.map(() => false);
+}
+
+/** 技を始める。hitDone・ガード固定・アーマーの残りを、その技の初期値にする（frame は 1、反撃パンチなど派生技は 0 で入る） */
+export function startMove(f: Fighter, id: string, frame: number): Fighter {
+  const move = getMove(f.char, id);
+  return { ...f, hitDone: freshHitDone(move), guardLocked: false, armorLeft: move.armor?.hits ?? 0, state: { name: 'attack', frame, move: id } };
 }
 
 /** 攻撃の箱（ステージ座標）。今のフレームに出ていて、まだ当たっていない最初の当たりを返す */
@@ -186,6 +193,7 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
         let used = st.used;
         let hitDone = f.hitDone;
         let guardLocked = f.guardLocked;
+        let armorLeft = f.armorLeft;
         if (attack) {
           attack = attack.frame + 1 <= moveTotalFrames(getMove(f.char, attack.move)) ? { ...attack, frame: attack.frame + 1 } : null;
         } else if (!used && (input.pressed.kick || input.pressed.punch)) {
@@ -195,11 +203,13 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
           used = move;
           hitDone = freshHitDone(f.char.moves[move]);
           guardLocked = false;
+          armorLeft = 0;
         }
         return {
           ...f,
           hitDone,
           guardLocked,
+          armorLeft,
           x: clampX(f.x + st.dir * jumpForwardSpeed, params),
           y: jumpY(frame, jumpAirFrames, jumpHeight),
           state: { name: 'air', frame, dir: st.dir, attack, used, recoilLeft: Math.max(0, st.recoilLeft - 1) },
@@ -223,7 +233,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   const held = input.held;
   // 左右同時押しは 0（どちらも押していない扱い）
   const horizontal = (held.right ? 1 : 0) - (held.left ? 1 : 0);
-  const base: Fighter = { ...f, facing, hitDone: [], guardLocked: false };
+  const base: Fighter = { ...f, facing, hitDone: [], guardLocked: false, armorLeft: 0 };
 
   const enter = (name: FreeStateName, x = base.x): Fighter => ({
     ...base,
@@ -232,8 +242,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   });
 
   // 同じフレームに押されたら 必殺 ＞ 掴み ＞ キック ＞ パンチ（08_architecture.md の優先順位）
-  const attack = (move: MoveSlot): Fighter =>
-    applyMovement({ ...base, hitDone: freshHitDone(f.char.moves[move]), state: { name: 'attack', frame: 1, move } }, f.char.moves[move], 1, params);
+  const attack = (move: MoveSlot): Fighter => applyMovement(startMove(base, move, 1), f.char.moves[move], 1, params);
   if (input.pressed.special) {
     // 向きはボタンを押したフレームの方向で決める。↓ を → より優先し、← はニュートラル
     const forward = horizontal * facing > 0;

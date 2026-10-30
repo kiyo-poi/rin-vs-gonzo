@@ -93,6 +93,8 @@ export interface CharacterData {
     jumpForwardSpeed: number;
     /** 押し合いの幅 px（2人の足元の中心は、2人の幅の平均より近づけない） */
     pushWidth: number;
+    /** アーマーで耐えた時の被ダメージの割合（省略時は 1） */
+    armorDamageRate?: number;
   };
   boxes: {
     hurt: { stand: Box[]; crouch: Box[]; air: Box[] };
@@ -192,6 +194,8 @@ export interface Fighter {
   hitDone: boolean[];
   /** 今の技の1発目がガードされた（guardLock の技の、残りの当たりをガード扱いにする）。技が始まる時に false */
   guardLocked: boolean;
+  /** 今の技のアーマーが、あと何発耐えられるか。技が始まる時に armor.hits（アーマーのない技は 0） */
+  armorLeft: number;
   /** 起き上がり無敵の残りフレーム（0 なら無敵ではない） */
   invincible: number;
 }

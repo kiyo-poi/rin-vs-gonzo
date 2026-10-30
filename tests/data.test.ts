@@ -141,4 +141,21 @@ describe('キャラデータ', () => {
     ]);
     expect(m.hits[0]).toMatchObject({ frames: { from: 1, to: 6 }, groundOnly: true, box: { x: -160, y: 0, w: 320, h: 30 } });
   });
+
+  it('マッスルポーズは 4/26/20・アーマー1発・耐えたら反撃パンチ、反撃パンチは 8/3/16・100・重', () => {
+    const m = gonzo.moves.special;
+    expect([m.startup, m.active, m.recovery]).toEqual([4, 26, 20]);
+    expect(m.kind).toBe('special');
+    expect(m.hits).toEqual([]);
+    expect(m.armor).toEqual({ frames: { from: 5, to: 30 }, hits: 1, onAbsorb: 'counterPunch' });
+    const c = gonzo.subMoves!.counterPunch;
+    expect([c.startup, c.active, c.recovery, c.hits[0].damage, c.hits[0].weight]).toEqual([8, 3, 16, 100, 'heavy']);
+    expect(c.kind).toBe('special');
+    expect(c.hits[0].box).toEqual({ x: 30, y: 110, w: 100, h: 30 });
+  });
+
+  it('ラリアット突進のアーマーは 17〜36F目に1発、ゴンゾーのアーマー被ダメージ率は 0.5', () => {
+    expect(gonzo.moves.forwardSpecial.armor).toEqual({ frames: { from: 17, to: 36 }, hits: 1 });
+    expect(gonzo.stats.armorDamageRate).toBe(0.5);
+  });
 });
