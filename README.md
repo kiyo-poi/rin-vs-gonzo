@@ -36,7 +36,9 @@ npm run dev
 
 生成した画像は `tools/clean_sprites.py` で、切れ端の除去・大きさと足元の位置合わせができる（元の画像は `art-work/originals/` に保管）。
 
-`assets/` と `characters/` の中身はすべて公開される。下書きや設定シートは `art-work/`（git の管理外）に置く。
+背景は `stages/stage_<chinatown|ring>.jpg`（2P 側のキャラのステージで戦う）、タイトルロゴは `ui/title_logo.png`。
+
+`assets/`・`characters/`・`stages/`・`ui/` の中身はすべて公開される。下書きや設定シートは `art-work/`（git の管理外）に置く。
 
 ## 開発
 

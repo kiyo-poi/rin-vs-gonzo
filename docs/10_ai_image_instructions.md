@@ -126,12 +126,11 @@ chibi, super deformed, 2.5 heads tall, anime style, thick bold black outlines, f
 fighting-game/characters/
   lin/     lin_idle.png, lin_walk.png, … lin_cutin.png, lin_portrait.png（22枚）
   gonzo/   gonzo_idle.png, … gonzo_portrait.png（22枚）
-fighting-game/assets/images/
-  stages/  stage_chinatown.jpg, stage_ring.jpg
-  ui/      title_logo.png（あれば）
+fighting-game/stages/  stage_chinatown.jpg, stage_ring.jpg
+fighting-game/ui/      title_logo.png（あれば）
 ```
 
-- キャラ画像は `fighting-game/characters/` に置く（`assets/images/characters` はこのフォルダを指すリンク。ゲームはここから読む）
+- キャラ画像は `fighting-game/characters/`、背景は `fighting-game/stages/`、ロゴは `fighting-game/ui/` に置く（`assets/images/` の下はこれらを指すリンク。ゲームはここから読む）
 
 - [ ] 置いたら Claude に「画像を置いた」と伝える。足りない画像があっても、ある分から組み込み、無い分は今の四角で代わりに描く
 - [ ] 使ったツールの名前と、規約で求められているクレジット表記があれば一緒に伝える（`assets/CREDITS.md` に書く）
