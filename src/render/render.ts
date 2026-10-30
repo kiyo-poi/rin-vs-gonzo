@@ -5,6 +5,8 @@ import { cameraX } from './camera';
 import { shakeOffset, type Effect, type EffectsState } from './effects';
 import type { Trail } from './healthTrail';
 import { phaseMessage } from './hud';
+import { drawFallbackFighter } from './characterDraw';
+import { drawFighterSprite, poseFor, TINT_2P, type SpriteStore } from './sprites';
 
 export interface DebugInfo {
   /** 開発用の表示（攻撃の箱・状態・押しているキー）を出すか */
@@ -18,13 +20,13 @@ export interface View {
   colors: [string, string];
   trails: [Trail, Trail];
   effects: EffectsState;
+  /** 画像の置き場（無ければ代わりのキャラを描く） */
+  sprites?: SpriteStore;
 }
 
 const HEALTH_BAR = { width: 500, height: 24, top: 30, side: 40 };
 /** 背景の縦線の間隔（カメラの動きを見やすくするため） */
 const GRID = 160;
-/** ダウン中に寝かせて描く四角の高さ */
-const LYING_HEIGHT = 30;
 
 export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: Params, view: View, debug: DebugInfo): void {
   const { width, height } = ctx.canvas;
@@ -51,22 +53,26 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
   ctx.fillStyle = '#556';
   ctx.fillRect(0, groundY, width, height - groundY);
 
+  const mirror = battle.fighters[0].char.id === battle.fighters[1].char.id;
   battle.fighters.forEach((f, i) => {
-    ctx.fillStyle = view.colors[i];
     // 起き上がり無敵の間は2フレームに1回だけ描いて点滅させる。決着表示中は battle.frame が止まるので、点滅させない
     const hidden = match.phase === 'fight' && f.invincible > 0 && battle.frame % 2 === 1;
-    const boxes = hidden ? [] : f.state.name === 'knockdown' ? [lyingBox(f)] : hurtBoxes(f);
-    for (const box of boxes) {
-      const s = toScreen(box);
-      ctx.fillRect(s.x, s.y, s.w, s.h);
-      if (f.state.name === 'guard' || f.state.name === 'blockstun') {
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(s.x, s.y, s.w, s.h);
-      }
+    if (!hidden) {
+      const screenX = f.x - camX;
+      const feetY = groundY - f.y;
+      const img = view.sprites?.get(f.char.id, poseFor(f)) ?? null;
+      // 同じキャラ同士の時だけ 2P を色違いにする
+      if (img) drawFighterSprite(ctx, img, f, screenX, feetY, 1, mirror && i === 1 ? TINT_2P : undefined);
+      else drawFallbackFighter(ctx, f, screenX, feetY, mirror && i === 1 ? 1 : 0);
     }
 
     if (debug.show) {
+      ctx.strokeStyle = view.colors[i];
+      ctx.lineWidth = 1;
+      for (const box of hidden ? [] : hurtBoxes(f)) {
+        const s = toScreen(box);
+        ctx.strokeRect(s.x, s.y, s.w, s.h);
+      }
       const active = activeHitbox(f);
       if (active) {
         const s = toScreen(active.box);
@@ -92,13 +98,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
     ctx.fillText(`1P のキー: ${debug.keys.p1.join(' ')}`, 16, height - 40);
     ctx.fillText(`2P のキー: ${debug.keys.p2.join(' ')}`, 16, height - 16);
   }
-}
-
-/** ダウン中に足元へ寝かせて描く四角。幅は立ちの食らいの箱の高さ、高さは 30 */
-function lyingBox(f: Fighter): Box {
-  const stand = f.char.boxes.hurt.stand;
-  const standHeight = Math.max(...stand.map((b) => b.y + b.h));
-  return { x: f.x - standHeight / 2, y: f.y, w: standHeight, h: LYING_HEIGHT };
 }
 
 /** 仮の HUD：タイマー・ラウンド・勝ち数（●）・画面中央の文言 */

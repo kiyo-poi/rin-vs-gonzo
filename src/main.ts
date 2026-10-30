@@ -1,3 +1,5 @@
+import { createAudio } from './audio/audio';
+import { createSpriteStore } from './render/sprites';
 import { createFixedStep } from './core/loop';
 import { SceneStack } from './core/scene';
 import { characters, controls, params } from './data/data';
@@ -13,6 +15,11 @@ if (!ctx) throw new Error('Canvas 2D が使えません');
 const keyboard = new KeyboardState(allCodes(controls));
 keyboard.attach(window);
 
+const audio = createAudio();
+const sprites = createSpriteStore(import.meta.env.BASE_URL);
+// ブラウザの決まりで、音は最初のキー入力の後から鳴らせる
+window.addEventListener('keydown', () => audio.unlock(), { once: true });
+
 let clock = 0;
 const stack = new SceneStack();
 const game: Game = {
@@ -21,6 +28,8 @@ const game: Game = {
   controls,
   roster: Object.values(characters),
   clock: () => clock,
+  audio,
+  sprites,
   debug: () => {
     const keys = keyboard.snapshot();
     return { show: import.meta.env.DEV, keys: { p1: keysFor(keys, controls.p1), p2: keysFor(keys, controls.p2) } };

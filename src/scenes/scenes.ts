@@ -2,10 +2,13 @@ import type { SceneStack, FrameInput, Scene } from '../core/scene';
 import { createCpu, type CpuController } from '../cpu/cpu';
 import { canRematch, createMatch, stepMatch, type Match } from '../logic/match';
 import type { CharacterData, Controls, InputFrame, Params } from '../logic/types';
+import type { Audio } from '../audio/audio';
 import { addEventEffects, createEffects, stepEffects } from '../render/effects';
 import { createTrail, stepTrail } from '../render/healthTrail';
 import { charType } from '../render/labels';
 import { fighterColor } from '../render/palette';
+import { drawPortrait } from '../render/portrait';
+import type { SpriteStore } from '../render/sprites';
 import { drawFrame, type DebugInfo, type View } from '../render/render';
 import { drawBothControls, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
 import { LEVELS, resultTitle, type MatchConfig, type Mode } from './config';
@@ -23,17 +26,33 @@ export interface Game {
   /** 起動からのフレーム数。CPU の乱数の種に使う */
   clock(): number;
   debug(): DebugInfo;
+  /** 音（無ければ鳴らさない） */
+  audio?: Audio;
+  /** 画像の置き場（無ければ代わりのキャラを描く） */
+  sprites?: SpriteStore;
+}
+
+/** メニューの効果音：動いたら move、決定は decide、取り消しは cancel */
+function menuSound(game: Game, index: number, r: { index: number; decided: boolean; cancelled: boolean }): void {
+  if (r.cancelled) game.audio?.playUi('cancel');
+  else if (r.decided) game.audio?.playUi('decide');
+  else if (r.index !== index) game.audio?.playUi('move');
 }
 
 const GAME_TITLE = 'FIGHT GAME';
 
 export class TitleScene implements Scene {
   private frame = 0;
-  constructor(private readonly game: Game) {}
+  constructor(private readonly game: Game) {
+    game.audio?.startBgm('title');
+  }
 
   update(input: FrameInput): void {
     this.frame++;
-    if (input.players.some((p) => p.pressed.punch)) this.game.stack.replace(new ModeScene(this.game));
+    if (input.players.some((p) => p.pressed.punch)) {
+      this.game.audio?.playUi('decide');
+      this.game.stack.replace(new ModeScene(this.game));
+    }
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
@@ -56,11 +75,14 @@ export class ModeScene implements Scene {
   private step: 'mode' | 'level' = 'mode';
   private index = 0;
   private levelIndex = 1;
-  constructor(private readonly game: Game) {}
+  constructor(private readonly game: Game) {
+    game.audio?.startBgm('title');
+  }
 
   update(input: FrameInput): void {
     if (this.step === 'mode') {
       const r = stepMenu(this.index, 2, input.players);
+      menuSound(this.game, this.index, r);
       this.index = r.index;
       if (r.cancelled) this.game.stack.replace(new TitleScene(this.game));
       else if (r.decided && this.index === 0) this.goSelect('versus');
@@ -68,6 +90,7 @@ export class ModeScene implements Scene {
       return;
     }
     const r = stepMenu(this.levelIndex, LEVELS.length, input.players);
+    menuSound(this.game, this.levelIndex, r);
     this.levelIndex = r.index;
     if (r.cancelled) this.step = 'mode';
     else if (r.decided) this.goSelect('cpu');
@@ -100,11 +123,13 @@ export class SelectScene implements Scene {
   ) {
     const last = Math.max(0, game.roster.length - 1);
     this.state = createSelect(mode === 'cpu', [0, Math.min(1, last)]);
+    game.audio?.startBgm('select');
   }
 
   update(input: FrameInput): void {
     const seed = this.game.clock();
     const r = stepSelect(this.state, input.players, this.game.roster.length, seed);
+    this.playSelectSound(r);
     this.state = r.state;
     if (r.back) {
       this.game.stack.replace(new ModeScene(this.game));
@@ -122,6 +147,17 @@ export class SelectScene implements Scene {
     }
   }
 
+  private playSelectSound(r: ReturnType<typeof stepSelect>): void {
+    const audio = this.game.audio;
+    if (!audio) return;
+    const before = this.state.cursors;
+    const after = r.state.cursors;
+    if (r.back) audio.playUi('cancel');
+    else if (after.some((c, i) => c.decided && !before[i].decided && !(this.state.cpu && i === 1))) audio.playUi('decide');
+    else if (after.some((c, i) => !c.decided && before[i].decided)) audio.playUi('cancel');
+    else if (after.some((c, i) => c.index !== before[i].index)) audio.playUi('move');
+  }
+
   draw(ctx: CanvasRenderingContext2D): void {
     drawScreen(ctx, 'キャラ選択', 48);
     const roster = this.game.roster;
@@ -136,9 +172,13 @@ export class SelectScene implements Scene {
       const x = left + i * (cardW + gap);
       ctx.fillStyle = '#2a2a44';
       ctx.fillRect(x, top, cardW, cardH);
-      // 立ち絵の代わりの四角（M5 で画像にする）
-      ctx.fillStyle = fighterColor([char.id, ''], 0);
-      ctx.fillRect(x + 20, top + 20, 70, 140);
+      // 立ち絵（画像が無ければ代わりのキャラ）。カードの枠に収める
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x + 10, top + 10, 90, 160);
+      ctx.clip();
+      drawPortrait(ctx, this.game.sprites, char, this.game.params, 'idle', x + 55, top + 165, { scale: 0.3, fallbackScale: 0.9 });
+      ctx.restore();
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'left';
       ctx.font = 'bold 30px sans-serif';
@@ -191,7 +231,9 @@ export class FightScene implements Scene {
       colors: [fighterColor(config.chars, 0), fighterColor(config.chars, 1)],
       trails: [createTrail(f0.health), createTrail(f1.health)],
       effects: createEffects(),
+      sprites: game.sprites,
     };
+    game.audio?.startBgm('stage');
   }
 
   /** 今の試合（テスト用） */
@@ -230,6 +272,7 @@ export class FightScene implements Scene {
     this.match = after;
     // 対戦ロジックが進んだフレームだけ出来事を読む（開始表示・決着表示中は battle が同じものなので読まない）
     if (after.battle !== before.battle && after.battle.events.length > 0) {
+      this.game.audio?.playEvents(after.battle.events);
       this.view = { ...this.view, effects: addEventEffects(this.view.effects, after.battle.events, after.battle.fighters) };
     }
     // KO の瞬間から少しスローにする
@@ -260,6 +303,7 @@ export class PauseScene implements Scene {
 
   update(input: FrameInput): void {
     const r = stepMenu(this.index, 3, input.players);
+    menuSound(this.game, this.index, r);
     this.index = r.index;
     if (input.pause || r.cancelled || (r.decided && this.index === 0)) this.game.stack.pop();
     else if (r.decided && this.index === 1) this.game.stack.replace(new SelectScene(this.game, this.config.mode, this.config.level));
@@ -299,10 +343,13 @@ export class ResultScene implements Scene {
     private readonly game: Game,
     private readonly config: MatchConfig,
     private readonly winner: 0 | 1 | null,
-  ) {}
+  ) {
+    game.audio?.startBgm('result');
+  }
 
   update(input: FrameInput): void {
     const r = stepMenu(this.index, 3, input.players);
+    menuSound(this.game, this.index, r);
     this.index = r.index;
     if (!r.decided) return;
     if (this.index === 0) this.game.stack.replace(new FightScene(this.game, this.config));
@@ -315,9 +362,13 @@ export class ResultScene implements Scene {
     const cx = ctx.canvas.width / 2;
     if (this.winner !== null) {
       const char = this.game.roster.find((c) => c.id === this.config.chars[this.winner!])!;
-      // 勝ったキャラの立ち絵の代わり（M5 で画像にする）
-      ctx.fillStyle = fighterColor(this.config.chars, this.winner);
-      ctx.fillRect(cx - 50, 160, 100, 200);
+      // 勝ったキャラの立ち絵（画像が無ければ代わりのキャラ）
+      drawPortrait(ctx, this.game.sprites, char, this.game.params, 'win', cx, 370, {
+        scale: 0.4,
+        fallbackScale: 1.3,
+        colorIndex: this.winner === 1 && this.config.chars[0] === this.config.chars[1] ? 1 : 0,
+        tint: this.winner === 1 && this.config.chars[0] === this.config.chars[1],
+      });
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
       ctx.font = 'bold 32px sans-serif';
