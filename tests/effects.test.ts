@@ -90,13 +90,15 @@ describe('表示用の文字', () => {
     expect(moveLines(unknown)).toContain('ふしぎ');
   });
   it('戦闘中の操作案内は controls.json から作る', () => {
-    const [a, b] = fightGuideLines(controls);
-    expect(a).toContain('パンチF');
-    expect(a).toContain('超必殺 V+B');
-    expect(a).toContain('移動ADWS');
-    expect(b).toContain('パンチテン4');
-    expect(b).toContain('別キー');
-    expect(b).toContain('J');
+    const { p1, p2 } = fightGuideLines(controls);
+    expect(p1[0]).toContain('移動 A D');
+    expect(p1[0]).toContain('ジャンプ W');
+    expect(p1[1]).toContain('パンチ F');
+    expect(p1[1]).toContain('超必殺 V+B');
+    expect(p2[1]).toContain('パンチ 4/J');
+    expect(p2[0]).toContain('数字はテンキー');
+    expect(p1[0]).not.toContain('テンキー');
+    expect(p2[1]).toContain('ガード 2/,');
   });
   it('同じキャラ同士なら 2P は色違い', () => {
     expect(fighterColor(['lin', 'lin'], 1)).not.toBe(fighterColor(['lin', 'lin'], 0));

@@ -36,17 +36,19 @@ export function moveLines(char: CharacterData): string[] {
     .map(([slot, m]) => (SLOT_NAMES[slot] ? `${SLOT_NAMES[slot]}：${m!.name}` : m!.name));
 }
 
-/** 戦闘画面の下に出す操作の案内（2行：1P と 2P）。キー名は controls.json から作る */
-export function fightGuideLines(controls: { p1: ButtonKeys; p2: ButtonKeys }): [string, string] {
-  const short = (c: string) => (c.startsWith('Numpad') ? `テン${c.slice(6)}` : keyLabel(c));
-  const k = (m: ButtonKeys, b: Button) => short(m[b][0]);
-  const move = (m: ButtonKeys) => [m.left, m.right, m.up, m.down].map((c) => short(c[0])).join('');
-  const line = (tag: string, m: ButtonKeys) =>
-    `${tag} 移動${move(m)} パンチ${k(m, 'punch')} キック${k(m, 'kick')} 掴み${k(m, 'grab')} 必殺${k(m, 'special')} ガード${k(m, 'guard')} ／ 超必殺 ${k(m, 'special')}+${k(m, 'guard')}`;
-  const alt = (b: Button) => controls.p2[b].slice(1).map(short).join('/');
-  const hasAlt = (['punch', 'kick', 'grab', 'special', 'guard'] as Button[]).every((b) => controls.p2[b].length > 1);
-  const altText = hasAlt ? `（別キー：パンチ${alt('punch')} キック${alt('kick')} 掴み${alt('grab')} 必殺${alt('special')} ガード${alt('guard')}）` : '';
-  return [line('1P', controls.p1), `${line('2P', controls.p2)}${altText}`];
+/** 戦闘画面の下に出す操作の案内。1P・2P それぞれ2行（移動の行・ボタンの行）。キー名は controls.json から作る */
+export function fightGuideLines(controls: { p1: ButtonKeys; p2: ButtonKeys }): { p1: [string, string]; p2: [string, string] } {
+  // テンキーは数字だけにして、1行目に「数字はテンキー」と添える
+  const short = (c: string) => (c.startsWith('Numpad') ? c.slice(6) : keyLabel(c));
+  const usesNumpad = (m: ButtonKeys) => Object.values(m).some((cs) => cs.some((c) => c.startsWith('Numpad')));
+  // 1つのボタンに複数のキーがあれば「4/J」のように並べる
+  const k = (m: ButtonKeys, b: Button) => m[b].map(short).join('/');
+  const first = (m: ButtonKeys, b: Button) => short(m[b][0]);
+  const lines = (tag: string, m: ButtonKeys): [string, string] => [
+    `${tag}　移動 ${first(m, 'left')} ${first(m, 'right')}　ジャンプ ${first(m, 'up')}　しゃがみ ${first(m, 'down')}${usesNumpad(m) ? '　（数字はテンキー）' : ''}`,
+    `パンチ ${k(m, 'punch')}　キック ${k(m, 'kick')}　掴み ${k(m, 'grab')}　必殺 ${k(m, 'special')}　ガード ${k(m, 'guard')}　超必殺 ${first(m, 'special')}+${first(m, 'guard')}`,
+  ];
+  return { p1: lines('1P', controls.p1), p2: lines('2P', controls.p2) };
 }
 
 const TYPES: Record<string, string> = { lin: 'スピード型', gonzo: 'パワー型' };

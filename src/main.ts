@@ -22,6 +22,15 @@ const images = createImageStore(import.meta.env.BASE_URL);
 // ブラウザの決まりで、音は最初のキー入力の後から鳴らせる
 window.addEventListener('keydown', () => audio.unlock(), { once: true });
 
+// 開発用の表示（当たり判定・状態・押しているキー）は F1 で出し入れする（開発中だけ。最初は消しておく）
+let debugOn = false;
+window.addEventListener('keydown', (e) => {
+  if (import.meta.env.DEV && e.code === 'F1') {
+    e.preventDefault();
+    debugOn = !debugOn;
+  }
+});
+
 let clock = 0;
 const stack = new SceneStack();
 const game: Game = {
@@ -35,7 +44,7 @@ const game: Game = {
   images,
   debug: () => {
     const keys = keyboard.snapshot();
-    return { show: import.meta.env.DEV, keys: { p1: keysFor(keys, controls.p1), p2: keysFor(keys, controls.p2) } };
+    return { show: import.meta.env.DEV && debugOn, keys: { p1: keysFor(keys, controls.p1), p2: keysFor(keys, controls.p2) } };
   },
 };
 stack.start(new TitleScene(game));

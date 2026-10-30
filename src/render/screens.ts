@@ -64,19 +64,21 @@ export function drawMoveList(ctx: CanvasRenderingContext2D, char: CharacterData,
   moveLines(char).forEach((line, i) => (maxWidth ? ctx.fillText(line, x, y + i * lineHeight, maxWidth) : ctx.fillText(line, x, y + i * lineHeight)));
 }
 
-/** 戦闘画面の下の操作案内（ゲージの下。半透明の帯の上に2行） */
+/** 戦闘画面の下の操作案内（ゲージの下。半透明の帯の上に、左に 1P・右に 2P を2行ずつ） */
 export function drawFightGuide(ctx: CanvasRenderingContext2D, controls: Controls): void {
   const { width, height } = ctx.canvas;
-  const lines = fightGuideLines(controls);
+  const guide = fightGuideLines(controls);
   const bandH = 52;
+  const half = width / 2;
   ctx.save();
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
   ctx.fillRect(0, height - bandH, width, bandH);
-  ctx.font = '15px sans-serif';
+  ctx.font = '17px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#f99';
-  ctx.fillText(lines[0], width / 2, height - bandH + 21, width - 40);
-  ctx.fillStyle = '#9cf';
-  ctx.fillText(lines[1], width / 2, height - bandH + 43, width - 40);
+  ([['p1', '#f99', half / 2], ['p2', '#9cf', half + half / 2]] as const).forEach(([who, color, cx]) => {
+    ctx.fillStyle = color;
+    ctx.fillText(guide[who][0], cx, height - bandH + 21, half - 30);
+    ctx.fillText(guide[who][1], cx, height - bandH + 43, half - 30);
+  });
   ctx.restore();
 }
