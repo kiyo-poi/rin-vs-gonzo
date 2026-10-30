@@ -1,5 +1,5 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, clashRecoil, createFighter, faceOpponent, hurtBoxes, isAirborne, isCrouching, isHittable, stepFighter } from './fighter';
+import { activeHitbox, clampX, clashRecoil, createFighter, currentAttack, faceOpponent, hurtBoxes, isAirborne, getMove, isCrouching, isHittable, stepFighter } from './fighter';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
@@ -57,6 +57,9 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     const weight = params.weights[result.hit.weight];
     fighters[attacker] = markHitDone(fighters[attacker], result.index);
     if (result.blocked) {
+      // ガード固定の技は、1発目がガードされたら残りの当たりもガード扱いにする
+      const cur = currentAttack(fighters[attacker]);
+      if (cur && getMove(fighters[attacker].char, cur.move).guardLock) fighters[attacker] = { ...fighters[attacker], guardLocked: true };
       fighters[defender] = {
         ...fighters[defender],
         state: { name: 'blockstun', frame: 0, duration: weight.blockstun, crouch: isCrouching(fighters[defender]) },
@@ -99,7 +102,7 @@ function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; in
   const active = activeHitbox(attacker);
   if (!active || !isHittable(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
-  const blocked = defender.state.name === 'guard' || defender.state.name === 'blockstun';
+  const blocked = attacker.guardLocked || defender.state.name === 'guard' || defender.state.name === 'blockstun';
   return { hit: active.hit, index: active.index, blocked };
 }
 

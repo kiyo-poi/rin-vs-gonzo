@@ -183,13 +183,85 @@
       ]
     },
     "special": {
-      "name": "必殺（仮）",
+      "name": "連拳",
       "posture": "stand",
-      "startup": 10,
-      "active": 2,
-      "recovery": 20,
-      "hits": [],
-      "kind": "special"
+      "startup": 7,
+      "active": 20,
+      "recovery": 16,
+      "hits": [
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 1,
+            "to": 1
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 5,
+            "to": 5
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 9,
+            "to": 9
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "light",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 13,
+            "to": 13
+          }
+        },
+        {
+          "damage": 18,
+          "weight": "medium",
+          "box": {
+            "x": 20,
+            "y": 90,
+            "w": 110,
+            "h": 30
+          },
+          "frames": {
+            "from": 17,
+            "to": 17
+          }
+        }
+      ],
+      "kind": "special",
+      "guardLock": true
     },
     "downSpecial": {
       "name": "下必殺（仮）",

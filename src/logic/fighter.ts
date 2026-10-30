@@ -10,6 +10,7 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     health: char.stats.health,
     state: { name: 'idle', frame: 1 },
     hitDone: [],
+    guardLocked: false,
     invincible: 0,
   };
 }
@@ -30,6 +31,12 @@ export function isAirborne(f: Fighter): boolean {
   return f.y > 0 || f.state.name === 'air' || f.state.name === 'airHit';
 }
 
+/** 今出している技（地上の技か空中技）と、その技に入ってからのフレーム数。出していなければ null */
+export function currentAttack(f: Fighter): { move: string; frame: number } | null {
+  const st = f.state;
+  return st.name === 'attack' ? st : st.name === 'air' ? st.attack : null;
+}
+
 /** 技を始める時の hitDone（hits と同じ長さで全部 false） */
 function freshHitDone(move: MoveData): boolean[] {
   return move.hits.map(() => false);
@@ -38,7 +45,7 @@ function freshHitDone(move: MoveData): boolean[] {
 /** 攻撃の箱（ステージ座標）。今のフレームに出ていて、まだ当たっていない最初の当たりを返す */
 export function activeHitbox(f: Fighter): { box: Box; hit: HitData; index: number } | null {
   const st = f.state;
-  const cur = st.name === 'attack' ? st : st.name === 'air' ? st.attack : null;
+  const cur = currentAttack(f);
   if (!cur) return null;
   const move = getMove(f.char, cur.move);
   if (cur.frame <= move.startup || cur.frame > move.startup + move.active) return null;
@@ -172,6 +179,7 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
         let attack = st.attack;
         let used = st.used;
         let hitDone = f.hitDone;
+        let guardLocked = f.guardLocked;
         if (attack) {
           attack = attack.frame + 1 <= moveTotalFrames(getMove(f.char, attack.move)) ? { ...attack, frame: attack.frame + 1 } : null;
         } else if (!used && (input.pressed.kick || input.pressed.punch)) {
@@ -180,10 +188,12 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
           attack = { move, frame: 1 };
           used = move;
           hitDone = freshHitDone(f.char.moves[move]);
+          guardLocked = false;
         }
         return {
           ...f,
           hitDone,
+          guardLocked,
           x: clampX(f.x + st.dir * jumpForwardSpeed, params),
           y: jumpY(frame, jumpAirFrames, jumpHeight),
           state: { name: 'air', frame, dir: st.dir, attack, used, recoilLeft: Math.max(0, st.recoilLeft - 1) },
@@ -207,7 +217,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   const held = input.held;
   // 左右同時押しは 0（どちらも押していない扱い）
   const horizontal = (held.right ? 1 : 0) - (held.left ? 1 : 0);
-  const base: Fighter = { ...f, facing, hitDone: [] };
+  const base: Fighter = { ...f, facing, hitDone: [], guardLocked: false };
 
   const enter = (name: FreeStateName, x = base.x): Fighter => ({
     ...base,

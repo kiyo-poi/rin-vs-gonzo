@@ -107,4 +107,15 @@ describe('キャラデータ', () => {
     expect(lariat.kind).toBe('special');
     expect(lariat.movement).toEqual([{ frames: { from: 17, to: 36 }, dx: 380 }]);
   });
+
+  it('連拳は 7/20/16、18×5＝90（軽×4＋中）、ガード固定', () => {
+    const m = lin.moves.special;
+    expect([m.startup, m.active, m.recovery]).toEqual([7, 20, 16]);
+    expect(m.kind).toBe('special');
+    expect(m.guardLock).toBe(true);
+    expect(m.hits.map((h) => h.frames)).toEqual([1, 5, 9, 13, 17].map((n) => ({ from: n, to: n })));
+    expect(m.hits.map((h) => h.damage)).toEqual([18, 18, 18, 18, 18]);
+    expect(m.hits.map((h) => h.weight)).toEqual(['light', 'light', 'light', 'light', 'medium']);
+    expect(m.hits[0].box).toEqual({ x: 20, y: 90, w: 110, h: 30 });
+  });
 });

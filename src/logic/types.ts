@@ -190,6 +190,8 @@ export interface Fighter {
   state: FighterState;
   /** 今の技の hits の何番目が当たった（ガードされた）か。技が始まる時にすべて false にする */
   hitDone: boolean[];
+  /** 今の技の1発目がガードされた（guardLock の技の、残りの当たりをガード扱いにする）。技が始まる時に false */
+  guardLocked: boolean;
   /** 起き上がり無敵の残りフレーム（0 なら無敵ではない） */
   invincible: number;
 }
