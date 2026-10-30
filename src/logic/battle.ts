@@ -4,10 +4,11 @@ import { gainGauge } from './gauge';
 import { grabConnects } from './throw';
 import { limitDistance, resolvePush } from './position';
 import { isSuperAttack, superChipDamage, superClashPriority, superStarted } from './superMove';
-import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
+import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params, Weight } from './types';
 
 export type BattleEvent =
-  | { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number }
+  /** weight は当たった技の重さ（音・演出の強さに使う）。投げの叩きつけは 'heavy' */
+  | { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number; weight: Weight }
   | { type: 'clash' }
   | { type: 'throw'; attacker: 0 | 1 }
   | { type: 'tech' }
@@ -38,7 +39,7 @@ export function createBattle(chars: [CharacterData, CharacterData], params: Para
 export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: Params): Battle {
   // [超必殺] 暗転中は誰も動かない
   if (b.freeze > 0) return { ...b, frame: b.frame + 1, freeze: b.freeze - 1, events: [] };
-  const stepped = stepBattleBase(b, inputs, params);
+  const stepped = withThrowLanding(b, stepBattleBase(b, inputs, params));
   // [超必殺] このフレームに超必殺が始まったら、暗転を始める（技の 1F目は暗転のあと）
   const started = ([0, 1] as const).filter((i) => superStarted(stepped.fighters[i]));
   if (started.length === 0) return stepped;
@@ -47,6 +48,22 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     freeze: params.superFlash,
     events: [...stepped.events, ...started.map((attacker): BattleEvent => ({ type: 'superStart', attacker }))],
   };
+}
+
+/** 投げられた側が叩きつけられた（thrown → knockdown）フレームに、音・火花用の 'hit' を足す */
+function withThrowLanding(before: Battle, after: Battle): Battle {
+  const landed = ([0, 1] as const).filter((i) => {
+    const st = before.fighters[i].state;
+    return st.name === 'thrown' && after.fighters[i].state.name === 'knockdown';
+  });
+  if (landed.length === 0) return after;
+  const events = landed.map((i): BattleEvent => ({
+    type: 'hit',
+    attacker: (1 - i) as 0 | 1,
+    damage: before.fighters[i].health - after.fighters[i].health,
+    weight: 'heavy',
+  }));
+  return { ...after, events: [...after.events, ...events] };
 }
 
 function stepBattleBase(b: Battle, inputs: [InputFrame, InputFrame], params: Params): Battle {
@@ -122,7 +139,7 @@ function stepBattleBase(b: Battle, inputs: [InputFrame, InputFrame], params: Par
       const onAbsorb = cur ? getMove(d.char, cur.move).armor?.onAbsorb : undefined;
       const absorbed = { ...d, health: Math.max(0, d.health - damage), armorLeft: d.armorLeft - 1 };
       fighters[defender] = onAbsorb ? startMove(absorbed, onAbsorb, 0) : absorbed;
-      events.push({ type: 'armor', attacker, damage });
+      events.push({ type: 'armor', attacker, damage, weight: result.hit.weight });
       [fighters[0], fighters[1]] = gainGauge(fighters, attacker, 'armor', damage, false, params);
       return;
     }
@@ -144,7 +161,7 @@ function stepBattleBase(b: Battle, inputs: [InputFrame, InputFrame], params: Par
         state: { name: 'blockstun', frame: 0, duration: weight.blockstun, crouch: isCrouching(d0) },
       };
       // 表示用：超必殺は削りの量そのもの、必殺技は実際に減った量（体力1止め）
-      events.push({ type: 'block', attacker, damage: superChip > 0 ? superChip : d0.health - health });
+      events.push({ type: 'block', attacker, damage: superChip > 0 ? superChip : d0.health - health, weight: result.hit.weight });
       [fighters[0], fighters[1]] = gainGauge(fighters, attacker, 'guarded', result.hit.damage, isSuperAttack(fighters[attacker]), params);
     } else {
       const d = fighters[defender];
@@ -163,7 +180,7 @@ function stepBattleBase(b: Battle, inputs: [InputFrame, InputFrame], params: Par
         : result.hit.knockdown ? knockdown
         : { name: 'hitstun', frame: 0, duration: weight.hitstun, crouch: isCrouching(d) };
       fighters[defender] = { ...d, health, combo, y: wasAir && health === 0 ? 0 : d.y, state };
-      events.push({ type: 'hit', attacker, damage });
+      events.push({ type: 'hit', attacker, damage, weight: result.hit.weight });
       [fighters[0], fighters[1]] = gainGauge(fighters, attacker, 'hit', damage, isSuperAttack(fighters[attacker]), params);
     }
     const distance = weight.knockback * (result.blocked ? params.blockKnockbackRate : 1);

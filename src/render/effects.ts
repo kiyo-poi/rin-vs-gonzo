@@ -69,7 +69,15 @@ export function addEventEffects(s: EffectsState, events: readonly { type: string
     } else if (e.type === 'clash') {
       list.push({ kind: 'clashSpark', ...mid, age: 0, life: SPARK_LIFE, scale: 1.4 });
       list.push({ kind: 'text', x: mid.x, y: mid.y + 70, age: 0, life: TEXT_LIFE, text: 'カキーン', scale: 1.3 });
-    } else if (e.type === 'throwBreak' || e.type === 'throwTech') {
+    } else if (e.type === 'armor' && (e.attacker === 0 || e.attacker === 1)) {
+      // アーマーで耐えた：耐えた側に白い火花と「ガキン」
+      const d = fighters[1 - e.attacker];
+      const y = d.y + HIT_HEIGHT;
+      list.push({ kind: 'blockSpark', x: d.x, y, age: 0, life: SPARK_LIFE, scale: 1.4 });
+      list.push({ kind: 'text', x: d.x, y: y + 60, age: 0, life: TEXT_LIFE, text: 'ガキン', scale: 1.2 });
+    } else if (e.type === 'throw') {
+      list.push({ kind: 'text', x: mid.x, y: mid.y + 70, age: 0, life: TEXT_LIFE, text: 'ガシッ', scale: 1.2 });
+    } else if (e.type === 'tech' || e.type === 'throwBreak' || e.type === 'throwTech') {
       list.push({ kind: 'clashSpark', ...mid, age: 0, life: SPARK_LIFE, scale: 1 });
       list.push({ kind: 'text', x: mid.x, y: mid.y + 70, age: 0, life: TEXT_LIFE, text: 'パシッ', scale: 1.2 });
     }

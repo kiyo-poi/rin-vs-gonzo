@@ -26,7 +26,7 @@ describe('ダウンと起き上がり', () => {
   it('足払いでダウン：10F目に当たり、11〜50F目はダウン、51F目に起き上がる', () => {
     const t = play([400, 500], 52, sweep);
     expect(t[at(9)].fighters[1].state.name).toBe('idle');
-    expect(t[at(10)].events).toEqual([{ type: 'hit', attacker: 0, damage: 50 }]);
+    expect(t[at(10)].events).toMatchObject([{ type: 'hit', attacker: 0, damage: 50 }]);
     expect(t[at(10)].fighters[1].state).toEqual({ name: 'knockdown', frame: 0, duration: 40 });
     expect(t[at(11)].fighters[1].state).toEqual({ name: 'knockdown', frame: 1, duration: 40 });
     expect(t[at(50)].fighters[1].state).toEqual({ name: 'knockdown', frame: 40, duration: 40 });
@@ -60,7 +60,7 @@ describe('空中で食らう', () => {
 
   it('ジャンプ中の相手に当てると airHit になり、y が毎フレーム 8 ずつ減って、0 に着いたフレームからダウン', () => {
     const t = play([400, 500], 60, jumpHit);
-    expect(t[at(5)].events).toEqual([{ type: 'hit', attacker: 0, damage: 30 }]);
+    expect(t[at(5)].events).toMatchObject([{ type: 'hit', attacker: 0, damage: 30 }]);
     const hit = t[at(5)].fighters[1];
     expect(hit.state).toEqual({ name: 'airHit', frame: 0 });
     expect(hit.y).toBeGreaterThan(0);
@@ -80,7 +80,7 @@ describe('空中で食らう', () => {
     let b = createBattle([proto, proto], params, [400, 500]);
     b = { ...b, fighters: [b.fighters[0], { ...b.fighters[1], health: 30 }] };
     for (let i = 1; i <= 5; i++) b = stepBattle(b, jumpHit(i), params);
-    expect(b.events).toEqual([{ type: 'hit', attacker: 0, damage: 30 }]);
+    expect(b.events).toMatchObject([{ type: 'hit', attacker: 0, damage: 30 }]);
     expect(b.fighters[1]).toMatchObject({ health: 0, y: 0, state: { name: 'knockdown', frame: 0, duration: 40 } });
   });
 
@@ -105,7 +105,7 @@ describe('空中で食らう', () => {
       i === 1 ? inputOf([], ['up']) : i === 20 ? inputOf([], ['punch']) : NONE,
     ]);
     expect(t[at(20)].fighters[1].state).toMatchObject({ name: 'air', attack: { move: 'airPunch' } });
-    expect(t[at(34)].events).toEqual([{ type: 'hit', attacker: 0, damage: 30 }]);
+    expect(t[at(34)].events).toMatchObject([{ type: 'hit', attacker: 0, damage: 30 }]);
     expect(t[at(34)].fighters[1].state).toEqual({ name: 'airHit', frame: 0 });
     const names = t.slice(at(34)).map((b) => b.fighters[1].state.name);
     expect(names).toContain('knockdown');

@@ -16,7 +16,7 @@ export type SoundName =
   | 'ui_move' | 'ui_decide' | 'ui_cancel';
 
 /** ダメージから重さを決める（イベントに weight が無い時の代わり） */
-export const DAMAGE_THRESHOLDS = { light: 7, medium: 12 } as const;
+export const DAMAGE_THRESHOLDS = { light: 40, medium: 80 } as const;
 
 /** BattleEvent（今後増える種類も含めてゆるく読む） */
 type LooseEvent = { type: string; weight?: unknown; damage?: unknown };

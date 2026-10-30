@@ -6,9 +6,10 @@ describe('soundForEvent', () => {
     [{ type: 'hit', weight: 'light' }, 'hit_light'],
     [{ type: 'hit', weight: 'medium' }, 'hit_medium'],
     [{ type: 'hit', weight: 'heavy' }, 'hit_heavy'],
-    [{ type: 'hit', damage: 5 }, 'hit_light'],
-    [{ type: 'hit', damage: 10 }, 'hit_medium'],
-    [{ type: 'hit', damage: 20 }, 'hit_heavy'],
+    // weight が無い時はダメージで決める（技のダメージは 18〜300 なので ≤40 軽・≤80 中・それ以上 重）
+    [{ type: 'hit', damage: 30 }, 'hit_light'],
+    [{ type: 'hit', damage: 60 }, 'hit_medium'],
+    [{ type: 'hit', damage: 120 }, 'hit_heavy'],
     [{ type: 'block' }, 'block'],
     [{ type: 'clash' }, 'clash'],
     [{ type: 'grab' }, 'grab'],
@@ -43,7 +44,7 @@ describe('createAudio（AudioContext が無い環境）', () => {
   it('unlock 前も後も例外を投げない', () => {
     const a = createAudio();
     expect(() => {
-      a.playEvents([{ type: 'hit', attacker: 0, damage: 5 }, { type: 'clash' }]);
+      a.playEvents([{ type: 'hit', attacker: 0, damage: 5, weight: 'light' }, { type: 'clash' }]);
       a.playUi('move');
       a.startBgm('title');
       a.stopBgm();

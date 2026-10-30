@@ -135,4 +135,28 @@ describe('CPU', () => {
     expect(blocks.length).toBeGreaterThanOrEqual(2);
     for (const s of states.slice(first, blocks[blocks.length - 1] + 1)) expect(['guard', 'blockstun']).toContain(s);
   });
+  it('ふつう以上は、ガードを固めて密着している相手をときどき掴む（やさしいは掴まない）', () => {
+    const grabs = (level: CpuLevel) => {
+      const cpu = createCpu(level, params, 4);
+      const m = withFighters(fightMatch(), { x: 900, state: { name: 'guard', frame: 5, crouch: false } }, { x: 960 });
+      let n = 0;
+      for (let i = 0; i < 300; i++) if (cpu.next(m, 1).pressed.grab) n++;
+      return n;
+    };
+    expect(grabs('normal')).toBeGreaterThan(0);
+    expect(grabs('hard')).toBeGreaterThan(0);
+    expect(grabs('easy')).toBe(0);
+  });
+
+  it('つよいはゲージが満タンなら、必殺とガードを同時に押して超必殺を出す', () => {
+    const cpu = createCpu('hard', params, 6);
+    let m = withFighters(fightMatch(), { x: 900 }, { x: 990, gauge: params.gauge.max });
+    let started = false;
+    for (let i = 0; i < 600 && !started; i++) {
+      const inp = cpu.next(m, 1);
+      m = stepMatch(m, [NONE, inp], params);
+      if (m.battle.events.some((e) => e.type === 'superStart' && e.attacker === 1)) started = true;
+    }
+    expect(started).toBe(true);
+  });
 });

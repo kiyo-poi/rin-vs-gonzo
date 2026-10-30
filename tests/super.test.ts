@@ -162,7 +162,7 @@ describe('百裂連拳フィナーレ', () => {
   it('突進して当たると 250 減る', () => {
     const t = run(battleOf([lin, gonzo], [400, 1000]), 60, p1({ 1: SUPER }));
     const hit = t.flatMap((b) => b.events).filter((e) => e.type === 'hit');
-    expect(hit).toEqual([{ type: 'hit', attacker: 0, damage: 250 }]);
+    expect(hit).toMatchObject([{ type: 'hit', attacker: 0, damage: 250 }]);
     expect(t[59].fighters[1].health).toBe(1150 - 250);
   });
 });
@@ -173,7 +173,7 @@ describe('超必殺の相打ち・アーマー・削り', () => {
     const t = run(battleOf([lin, lin], [400, 700]), 41, (i) => [i === 1 ? SUPER : NONE, i === 36 ? inputOf([], ['punch']) : NONE]);
     const events = t.flatMap((b) => b.events);
     expect(events.some((e) => e.type === 'clash')).toBe(false);
-    expect(t[39].events).toEqual([{ type: 'hit', attacker: 0, damage: 250 }]);
+    expect(t[39].events).toMatchObject([{ type: 'hit', attacker: 0, damage: 250 }]);
     expect(t[40].fighters[0].health).toBe(850);
   });
 
@@ -192,7 +192,7 @@ describe('超必殺の相打ち・アーマー・削り', () => {
     expect(t[38].fighters[1].state).toMatchObject({ name: 'attack', move: 'special' });
     const events = t.flatMap((b) => b.events);
     expect(events.some((e) => e.type === 'armor')).toBe(false);
-    expect(events).toContainEqual({ type: 'hit', attacker: 0, damage: 250 });
+    expect(events).toContainEqual(expect.objectContaining({ type: 'hit', attacker: 0, damage: 250 }));
     expect(t[40].fighters[1].health).toBe(1150 - 250);
   });
 
@@ -207,7 +207,7 @@ describe('超必殺の相打ち・アーマー・削り', () => {
       m = stepMatch(m, [NONE, guard], params);
       block ??= m.battle.events.find((e) => e.type === 'block') ?? null;
     }
-    expect(block).toEqual({ type: 'block', attacker: 0, damage: 50 });
+    expect(block).toMatchObject({ type: 'block', attacker: 0, damage: 50 });
     expect(m.battle.fighters[1].health).toBe(0);
     expect(m.phase).toBe('roundEnd');
     expect(m.lastResult).toEqual({ reason: 'ko', winner: 0 });

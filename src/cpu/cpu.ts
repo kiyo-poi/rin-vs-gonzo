@@ -1,5 +1,6 @@
 import { getMove } from '../logic/fighter';
 import type { Match } from '../logic/match';
+import { grabReaches } from '../logic/throw';
 import { BUTTONS, type Button, type Fighter, type InputFrame, type MoveSlot, type Params } from '../logic/types';
 
 export type CpuLevel = 'easy' | 'normal' | 'hard';
@@ -111,6 +112,21 @@ export function createCpu(level: CpuLevel, params: Params, seed: number): CpuCon
       return;
     }
     if (!isFree(me)) return;
+
+    // 超必殺（つよいだけ）：ゲージが満タンで届きそうなら、ときどき必殺＋ガードの同時押し
+    if (level === 'hard' && cooldown === 0 && me.gauge >= params.gauge.max && dist <= myReach + 40 && rng() < 0.05) {
+      held.special = true;
+      held.guard = true;
+      cooldown = 30;
+      return;
+    }
+    // 投げ（ふつう・つよい）：ガードを固めている相手に密着していたら、ときどき掴む
+    const grabRange = getMove(me.char, 'grab').throw?.range ?? 0;
+    if (level !== 'easy' && cooldown === 0 && st.name === 'guard' && grabReaches(me, seen, grabRange) && rng() < 0.3) {
+      held.grab = true;
+      cooldown = 10 + Math.floor(rng() * 10);
+      return;
+    }
 
     if (plan) {
       if (plan.kind === 'retreat') held[away] = true;

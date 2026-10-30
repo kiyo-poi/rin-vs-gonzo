@@ -359,7 +359,8 @@ export class ResultScene implements Scene {
     menuSound(this.game, this.index, r);
     this.index = r.index;
     if (!r.decided) return;
-    if (this.index === 0) this.game.stack.replace(new FightScene(this.game, this.config));
+    // 再戦は CPU の乱数を変える（同じシードだと CPU が前の試合と同じ動きをする）
+    if (this.index === 0) this.game.stack.replace(new FightScene(this.game, { ...this.config, seed: this.game.clock() }));
     else if (this.index === 1) this.game.stack.replace(new SelectScene(this.game, this.config.mode, this.config.level));
     else this.game.stack.replace(new TitleScene(this.game));
   }

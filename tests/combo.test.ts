@@ -25,7 +25,7 @@ const palm = inputOf(['right'], ['special']);
 describe('連続技の補正', () => {
   it('ジャブ→突進掌のキャンセルで 30＋56＝86 減る', () => {
     const t = run([400, 470], 30, (i) => [i === 1 ? inputOf([], ['punch']) : i === 6 ? palm : NONE, NONE]);
-    expect(events(t, 'hit')).toEqual([
+    expect(events(t, 'hit')).toMatchObject([
       { type: 'hit', attacker: 0, damage: 30 },
       { type: 'hit', attacker: 0, damage: 56 },
     ]);

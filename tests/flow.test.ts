@@ -83,5 +83,7 @@ describe('画面の流れ', () => {
     press(0, 'punch');
     expect(stack.top).toBeInstanceOf(FightScene);
     expect((stack.top as FightScene).current.chars.map((c) => c.id)).toEqual(['lin', 'gonzo']);
+    // 再戦は乱数のシードを取り直す（CPU が前の試合と同じ動きにならないように）
+    expect((stack.top as unknown as { config: { seed: number } }).config.seed).toBe(3);
   });
 });

@@ -37,7 +37,7 @@ describe('マッスルポーズ', () => {
   it('持続中にジャブを耐え、被ダメージは 15（30 の 50%）、のけぞらない', () => {
     // リンのジャブの当たる 5F目 ＝ 7F目（リンは3F目に押す）。ゴンゾーはマッスルポーズの7F目
     const t = run([lin, gonzo], [400, 470], 8, jabAt(3, pose));
-    expect(t[6].events).toEqual([{ type: 'armor', attacker: 0, damage: 15 }]);
+    expect(t[6].events).toMatchObject([{ type: 'armor', attacker: 0, damage: 15 }]);
     expect(t[6].fighters[1].health).toBe(1150 - 15);
     expect(t[6].fighters[1].x).toBe(470);
     expect(t[6].fighters[0].x).toBe(400);
@@ -56,7 +56,7 @@ describe('マッスルポーズ', () => {
     const t = run([lin, gonzo], [400, 470], 40, (i) => [i === 1 ? inputOf([], ['special']) : NONE, i === 1 ? pose : NONE]);
     expect(eventsOf(t).map((e) => e.type)).toEqual(['armor', 'hit', 'hit', 'hit', 'hit']);
     // 1発目は 18 の半分、2発目以降は反撃パンチ中のゴンゾーに普通に当たる
-    expect(t[7].events).toEqual([{ type: 'armor', attacker: 0, damage: 9 }]);
+    expect(t[7].events).toMatchObject([{ type: 'armor', attacker: 0, damage: 9 }]);
     expect(t[11].fighters[1].state.name).toBe('hitstun');
     expect(t[39].fighters[1].health).toBe(1150 - 9 - 18 * 4);
   });
@@ -68,7 +68,7 @@ describe('ラリアット突進のアーマー', () => {
   it('突進中に打撃を1発耐えて、そのまま当てる', () => {
     // ゴンゾー 800・リン 400。リンのジャブは 14F目に押して 18F目に当たる（ゴンゾーの18F目＝アーマー区間）
     const t = run([longJab, gonzo], [400, 800], 40, (i) => [i === 14 ? inputOf([], ['punch']) : NONE, i === 1 ? lariat : NONE]);
-    expect(t[17].events).toEqual([{ type: 'armor', attacker: 0, damage: 15 }]);
+    expect(t[17].events).toMatchObject([{ type: 'armor', attacker: 0, damage: 15 }]);
     expect(t[17].fighters[1].state).toMatchObject({ name: 'attack', frame: 18, move: 'forwardSpecial' });
     expect(t[17].fighters[1].x).toBeCloseTo(800 - 38);
     // そのまま突進して当てる
@@ -84,8 +84,8 @@ describe('ラリアット突進のアーマー', () => {
     const g = frameOf(alone, 'hit', 1);
     expect(g).toBeGreaterThan(17);
     const t = run([longJab, gonzo], [400, 800], g, (i) => [i === g - 4 ? inputOf([], ['punch']) : NONE, i === 1 ? lariat : NONE]);
-    expect(t[g - 1].events).toContainEqual({ type: 'armor', attacker: 0, damage: 15 });
-    expect(t[g - 1].events).toContainEqual({ type: 'hit', attacker: 1, damage: 110 });
+    expect(t[g - 1].events).toContainEqual(expect.objectContaining({ type: 'armor', attacker: 0, damage: 15 }));
+    expect(t[g - 1].events).toContainEqual(expect.objectContaining({ type: 'hit', attacker: 1, damage: 110 }));
     expect(t[g - 1].events.some((e) => e.type === 'clash')).toBe(false);
     expect(t[g - 1].fighters[0].health).toBe(850 - 110);
     expect(t[g - 1].fighters[1].state.name).toBe('attack');

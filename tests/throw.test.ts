@@ -40,12 +40,15 @@ describe('掴みと投げ', () => {
     expect(t[g - 1 + 41].fighters[1].health).toBe(850 - 80);
     expect(t[g - 1 + 41].fighters[1].state.name).toBe('knockdown');
     expect(t[g - 1 + 41].fighters[0].state.name).toBe('idle');
+    // 叩きつけたフレームに、音・火花用の重い 'hit' が出る（それ以外のフレームには出ない）
+    expect(t[g - 1 + 41].events).toEqual([{ type: 'hit', attacker: 0, damage: 80, weight: 'heavy' }]);
+    expect(t.slice(g, g - 1 + 41).every((b) => b.events.length === 0)).toBe(true);
   });
 
   it('掴みの発生前に打撃が当たれば打撃が勝つ', () => {
     // 2P のジャブ（2F目に押す）は 6F目に当たる。1P の掴みも 6F目に届くが、打撃が勝って不成立
     const t = run([lin, lin], [400, 470], 8, (i) => [i === 1 ? grab : NONE, i === 2 ? inputOf([], ['punch']) : NONE]);
-    expect(t[5].events).toEqual([{ type: 'hit', attacker: 1, damage: 30 }]);
+    expect(t[5].events).toMatchObject([{ type: 'hit', attacker: 1, damage: 30 }]);
     expect(t[5].fighters[0].state.name).toBe('hitstun');
     expect(t[5].fighters[1].state.name).toBe('attack');
     expect(throwFrame(t)).toBe(0);
