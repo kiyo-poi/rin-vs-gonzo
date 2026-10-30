@@ -105,6 +105,8 @@ export interface Params {
     maxRounds: number;
   };
   render: { groundY: number };
+  /** CPU の難易度ごとの値（reaction は反応の遅れ F） */
+  cpu?: Record<'easy' | 'normal' | 'hard', { reaction: number; guardRate: number; specialRate: number }>;
 }
 
 export type ButtonKeys = Record<Button, string[]>;
