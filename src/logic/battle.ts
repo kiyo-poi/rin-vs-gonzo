@@ -1,5 +1,5 @@
 import { overlaps } from './boxes';
-import { activeHitbox, clampX, clashRecoil, createFighter, faceOpponent, hurtBoxes, isCrouching, isHittable, stepFighter } from './fighter';
+import { activeHitbox, clampX, clashRecoil, createFighter, faceOpponent, hurtBoxes, isAirborne, isCrouching, isHittable, stepFighter } from './fighter';
 import { limitDistance, resolvePush } from './position';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
@@ -54,7 +54,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
     const attacker = i as 0 | 1;
     const defender = (1 - i) as 0 | 1;
     const weight = params.weights[result.hit.weight];
-    fighters[attacker] = { ...fighters[attacker], moveHasHit: true };
+    fighters[attacker] = markHitDone(fighters[attacker], result.index);
     if (result.blocked) {
       fighters[defender] = {
         ...fighters[defender],
@@ -67,7 +67,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       // 空中で食らったら落下（y はそのまま）。ただし倒れる一撃なら、KO 画面で宙に浮かないようすぐ地面に倒す。
       // 地上で knockdown の技ならダウン。それ以外はのけぞり
       const knockdown: FighterState = { name: 'knockdown', frame: 0, duration: params.knockdownFrames };
-      const wasAir = d.state.name === 'air';
+      const wasAir = isAirborne(d);
       const state: FighterState =
         wasAir && health === 0 ? knockdown
         : wasAir ? { name: 'airHit', frame: 0 }
@@ -85,13 +85,19 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
   return { frame: b.frame + 1, fighters, events };
 }
 
+function markHitDone(f: Fighter, index: number): Fighter {
+  const hitDone = f.hitDone.slice();
+  hitDone[index] = true;
+  return { ...f, hitDone };
+}
+
 /** 攻撃側の攻撃の箱が、守る側の食らいの箱に重なったか。重なったらガードできたかも返す */
-function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; blocked: boolean } | null {
+function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; index: number; blocked: boolean } | null {
   const active = activeHitbox(attacker);
   if (!active || !isHittable(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
   const blocked = defender.state.name === 'guard' || defender.state.name === 'blockstun';
-  return { hit: active.hit, blocked };
+  return { hit: active.hit, index: active.index, blocked };
 }
 
 /** ノックバックの向き。相手が右なら 1、左なら -1、同じ位置なら攻撃側の向き */

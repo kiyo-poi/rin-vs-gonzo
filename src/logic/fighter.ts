@@ -1,5 +1,5 @@
 import { toWorld } from './boxes';
-import type { Box, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, Params, Posture } from './types';
+import type { Box, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, MoveSlot, Params, Posture } from './types';
 
 export function createFighter(char: CharacterData, x: number, facing: 1 | -1): Fighter {
   return {
@@ -9,7 +9,7 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     facing,
     health: char.stats.health,
     state: { name: 'idle', frame: 1 },
-    moveHasHit: false,
+    hitDone: [],
     invincible: 0,
   };
 }
@@ -18,16 +18,38 @@ export function moveTotalFrames(move: MoveData): number {
   return move.startup + move.active + move.recovery;
 }
 
-/** 攻撃の箱（ステージ座標）。持続中で、まだ当たっていない時だけ返す */
-export function activeHitbox(f: Fighter): { box: Box; hit: HitData } | null {
+/** 技の枠名か subMoves の名前から技データを引く。無ければ例外 */
+export function getMove(char: CharacterData, id: string): MoveData {
+  const move = (char.moves as Record<string, MoveData>)[id] ?? char.subMoves?.[id];
+  if (!move) throw new Error(`技が見つかりません: ${id}`);
+  return move;
+}
+
+/** 空中か。高さがある（技の途中のジャンプなど）か、空中・空中やられの状態 */
+export function isAirborne(f: Fighter): boolean {
+  return f.y > 0 || f.state.name === 'air' || f.state.name === 'airHit';
+}
+
+/** 技を始める時の hitDone（hits と同じ長さで全部 false） */
+function freshHitDone(move: MoveData): boolean[] {
+  return move.hits.map(() => false);
+}
+
+/** 攻撃の箱（ステージ座標）。今のフレームに出ていて、まだ当たっていない最初の当たりを返す */
+export function activeHitbox(f: Fighter): { box: Box; hit: HitData; index: number } | null {
   const st = f.state;
-  if (f.moveHasHit) return null;
   const cur = st.name === 'attack' ? st : st.name === 'air' ? st.attack : null;
   if (!cur) return null;
-  const move = f.char.moves[cur.move];
+  const move = getMove(f.char, cur.move);
   if (cur.frame <= move.startup || cur.frame > move.startup + move.active) return null;
-  const hit = move.hits[0];
-  return { box: toWorld(hit.box, f), hit };
+  const activeFrame = cur.frame - move.startup;
+  const index = move.hits.findIndex((hit, i) => {
+    const range = hit.frames ?? { from: 1, to: move.active };
+    return !f.hitDone[i] && activeFrame >= range.from && activeFrame <= range.to;
+  });
+  if (index < 0) return null;
+  const hit = move.hits[index];
+  return { box: toWorld(hit.box, f), hit, index };
 }
 
 /** 攻撃を食らう状態か。ダウン・落下中と、起き上がり無敵の間は当たらない */
@@ -39,9 +61,14 @@ export function isHittable(f: Fighter): boolean {
 export function clashRecoil(f: Fighter, params: Params): Fighter {
   if (f.state.name === 'air') {
     // 空中の側も地上の側と同じ時間だけ動けなくする：空中技を消し、着地の隙を弾かれた時間以上にする
-    return { ...f, moveHasHit: true, state: { ...f.state, attack: null, recoilLeft: params.clashRecoil } };
+    return { ...f, hitDone: allDone(f), state: { ...f.state, attack: null, recoilLeft: params.clashRecoil } };
   }
-  return { ...f, moveHasHit: true, state: { name: 'recoil', frame: 0, duration: params.clashRecoil } };
+  return { ...f, hitDone: allDone(f), state: { name: 'recoil', frame: 0, duration: params.clashRecoil } };
+}
+
+/** 弾かれた技はもう当たらない：全部の当たりを済みにする */
+function allDone(f: Fighter): boolean[] {
+  return f.hitDone.map(() => true);
 }
 
 /** しゃがんでいるか。食らった・ガードした時の姿勢を、硬直中も保つために使う */
@@ -51,7 +78,7 @@ export function isCrouching(f: Fighter): boolean {
     st.name === 'crouch' ||
     (st.name === 'guard' && st.crouch) ||
     ((st.name === 'hitstun' || st.name === 'blockstun') && st.crouch) ||
-    (st.name === 'attack' && f.char.moves[st.move].posture === 'crouch')
+    (st.name === 'attack' && getMove(f.char, st.move).posture === 'crouch')
   );
 }
 
@@ -60,7 +87,7 @@ export function hurtBoxes(f: Fighter): Box[] {
   const hurt = f.char.boxes.hurt;
   const st = f.state;
   const posture: Posture =
-    st.name === 'attack' ? f.char.moves[st.move].posture
+    st.name === 'attack' ? getMove(f.char, st.move).posture
     : isCrouching(f) ? 'crouch'
     : st.name === 'air' || st.name === 'airHit' ? 'air'
     : 'stand';
@@ -87,7 +114,7 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
   switch (st.name) {
     case 'attack': {
       // 全体フレームが終わるまでは技の途中。終わったフレームは自由に動ける
-      if (st.frame + 1 <= moveTotalFrames(f.char.moves[st.move])) return { ...f, state: { ...st, frame: st.frame + 1 } };
+      if (st.frame + 1 <= moveTotalFrames(getMove(f.char, st.move))) return { ...f, state: { ...st, frame: st.frame + 1 } };
       break;
     }
     case 'landing': {
@@ -109,7 +136,7 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
       const y = f.y - params.airHitFallSpeed;
       if (y > 0) return { ...f, y, state: { ...st, frame: st.frame + 1 } };
       // 地面に着いたフレームからダウン
-      return { ...f, y: 0, moveHasHit: false, state: { name: 'knockdown', frame: 1, duration: params.knockdownFrames } };
+      return { ...f, y: 0, hitDone: [], state: { name: 'knockdown', frame: 1, duration: params.knockdownFrames } };
     }
     case 'jumpSquat': {
       if (st.frame + 1 <= params.jumpSquatFrames) return { ...f, state: { ...st, frame: st.frame + 1 } };
@@ -127,19 +154,19 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
       if (frame < jumpAirFrames) {
         let attack = st.attack;
         let used = st.used;
-        let moveHasHit = f.moveHasHit;
+        let hitDone = f.hitDone;
         if (attack) {
-          attack = attack.frame + 1 <= moveTotalFrames(f.char.moves[attack.move]) ? { ...attack, frame: attack.frame + 1 } : null;
+          attack = attack.frame + 1 <= moveTotalFrames(getMove(f.char, attack.move)) ? { ...attack, frame: attack.frame + 1 } : null;
         } else if (!used && (input.pressed.kick || input.pressed.punch)) {
           // 同じフレームに押されたらキックを優先する
           const move = input.pressed.kick ? 'airKick' : 'airPunch';
           attack = { move, frame: 1 };
           used = move;
-          moveHasHit = false;
+          hitDone = freshHitDone(f.char.moves[move]);
         }
         return {
           ...f,
-          moveHasHit,
+          hitDone,
           x: clampX(f.x + st.dir * jumpForwardSpeed, params),
           y: jumpY(frame, jumpAirFrames, jumpHeight),
           state: { name: 'air', frame, dir: st.dir, attack, used, recoilLeft: Math.max(0, st.recoilLeft - 1) },
@@ -147,8 +174,8 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
       }
       // 空中技を出していたら着地の隙（このフレームは入力を受け付けない）
       if (st.used) {
-        const duration = Math.max(f.char.moves[st.used].landingRecovery ?? params.airLandingRecovery, st.recoilLeft);
-        return { ...f, y: 0, moveHasHit: false, state: { name: 'landing', frame: 1, duration } };
+        const duration = Math.max(getMove(f.char, st.used).landingRecovery ?? params.airLandingRecovery, st.recoilLeft);
+        return { ...f, y: 0, hitDone: [], state: { name: 'landing', frame: 1, duration } };
       }
       // 出していなければ、着地したフレームからそのまま自由に動ける（入力を受け付け、向きも更新する）
       return stepFree({ ...f, y: 0, state: { name: 'idle', frame: 0 } }, input, opponentX, params);
@@ -163,7 +190,7 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   const held = input.held;
   // 左右同時押しは 0（どちらも押していない扱い）
   const horizontal = (held.right ? 1 : 0) - (held.left ? 1 : 0);
-  const base: Fighter = { ...f, facing, moveHasHit: false };
+  const base: Fighter = { ...f, facing, hitDone: [] };
 
   const enter = (name: FreeStateName, x = base.x): Fighter => ({
     ...base,
@@ -172,8 +199,13 @@ function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Para
   });
 
   // 同じフレームに押されたらキックを優先する（08_architecture.md の優先順位）
-  if (input.pressed.kick) return { ...base, state: { name: 'attack', frame: 1, move: held.down ? 'crouchKick' : 'kick' } };
-  if (input.pressed.punch) return { ...base, state: { name: 'attack', frame: 1, move: held.down ? 'crouchPunch' : 'punch' } };
+  const attack = (move: MoveSlot): Fighter => ({
+    ...base,
+    hitDone: freshHitDone(f.char.moves[move]),
+    state: { name: 'attack', frame: 1, move },
+  });
+  if (input.pressed.kick) return attack(held.down ? 'crouchKick' : 'kick');
+  if (input.pressed.punch) return attack(held.down ? 'crouchPunch' : 'punch');
   if (held.up) return { ...base, state: { name: 'jumpSquat', frame: 1, dir: horizontal as -1 | 0 | 1 } };
   if (held.guard) {
     return { ...base, state: { name: 'guard', frame: f.state.name === 'guard' ? f.state.frame + 1 : 1, crouch: held.down } };

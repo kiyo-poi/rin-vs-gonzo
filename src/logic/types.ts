@@ -28,7 +28,23 @@ export interface HitData {
   box: Box;
   /** 当たるとダウンさせる（足払いなど） */
   knockdown?: boolean;
+  /** 持続の何F目に出るか（持続の1F目＝1）。省略時は持続全体 */
+  frames?: FrameRange;
+  /** 地上の相手だけに当たる（ヒップドロップの衝撃波など） */
+  groundOnly?: boolean;
 }
+
+/** フレームの区間（from〜to を含む） */
+export type FrameRange = { from: number; to: number };
+
+/** 技の移動。区間の合計の移動量を、区間の各フレームに等分して足す（前向き・上がプラス） */
+export type MoveStep = { frames: FrameRange; dx: number; dy?: number };
+
+/** アーマー。区間の間、打撃を hits 発まで耐える */
+export type ArmorData = { frames: FrameRange; hits: number; onAbsorb?: string };
+
+/** 掴み技 */
+export type ThrowData = { range: number; damage: number; techable: boolean };
 
 /** 技を出す時の姿勢 */
 export type Posture = 'stand' | 'crouch' | 'air';
@@ -45,6 +61,16 @@ export interface MoveData {
   /** 空中技の着地の隙 F。省略時は共通値 */
   landingRecovery?: number;
   hits: HitData[];
+  /** 省略時は normal */
+  kind?: 'normal' | 'special' | 'throw';
+  movement?: MoveStep[];
+  /** 無敵のフレーム区間（技の何F目か） */
+  invincible?: FrameRange[];
+  armor?: ArmorData;
+  /** ガード固定（途中でガードを離しても残りの当たりはガードになる） */
+  guardLock?: boolean;
+  cancelInto?: 'special'[];
+  throw?: ThrowData;
 }
 
 /** 技を出すボタンの枠（掴み・必殺などは M3b 以降） */
@@ -70,6 +96,8 @@ export interface CharacterData {
     hurt: { stand: Box[]; crouch: Box[]; air: Box[] };
   };
   moves: Record<MoveSlot, MoveData>;
+  /** 入力では出ない派生技（反撃パンチなど） */
+  subMoves?: Record<string, MoveData>;
 }
 
 export interface Params {
@@ -131,14 +159,14 @@ export type FighterState =
       frame: number;
       dir: -1 | 0 | 1;
       /** 出している空中技（frame は技に入ってからのフレーム数） */
-      attack: { move: MoveSlot; frame: number } | null;
+      attack: { move: string; frame: number } | null;
       /** このジャンプで出した空中技（1ジャンプに1回だけ出せる） */
       used: MoveSlot | null;
       /** 相打ちで弾かれた時の残りフレーム（0 なら弾かれていない）。着地の隙はこれ以上の長さにする */
       recoilLeft: number;
     }
   | { name: 'landing'; frame: number; duration: number }
-  | { name: 'attack'; frame: number; move: MoveSlot }
+  | { name: 'attack'; frame: number; move: string }
   /** crouch は食らった・ガードした時にしゃがんでいたか（食らいの箱をしゃがみにする） */
   | { name: 'hitstun' | 'blockstun'; frame: number; duration: number; crouch: boolean }
   /** 相打ちで弾かれた（食らいの箱は立ち） */
@@ -158,8 +186,8 @@ export interface Fighter {
   facing: 1 | -1;
   health: number;
   state: FighterState;
-  /** 今出している技がもう当たったか（1つの技は相手に1回だけ当たる） */
-  moveHasHit: boolean;
+  /** 今の技の hits の何番目が当たった（ガードされた）か。技が始まる時にすべて false にする */
+  hitDone: boolean[];
   /** 起き上がり無敵の残りフレーム（0 なら無敵ではない） */
   invincible: number;
 }

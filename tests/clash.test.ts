@@ -43,7 +43,7 @@ describe('相打ち', () => {
     for (let i = 2; i <= 10; i++) f = stepFighter(f, i === 10 ? inputOf([], ['punch']) : NONE, 900, params);
     expect(f.state).toMatchObject({ name: 'air', attack: { move: 'airPunch' }, used: 'airPunch' });
     const clashed = clashRecoil(f, params);
-    expect(clashed.moveHasHit).toBe(true);
+    expect(clashed.hitDone).toEqual([true]);
     expect(clashed.state).toMatchObject({ name: 'air', attack: null, used: 'airPunch' });
     let g = clashed;
     for (let i = 11; i <= 38; i++) g = stepFighter(g, NONE, 900, params);
@@ -78,7 +78,7 @@ describe('相打ち', () => {
   it('地上の clashRecoil は recoil 状態にする', () => {
     const f = clashRecoil(createFighter(proto, 400, 1), params);
     expect(f.state).toEqual({ name: 'recoil', frame: 0, duration: 16 });
-    expect(f.moveHasHit).toBe(true);
+    expect(f.hitDone.every(Boolean)).toBe(true);
   });
 });
 
