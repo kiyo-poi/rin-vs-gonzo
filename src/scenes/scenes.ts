@@ -1,0 +1,329 @@
+import type { SceneStack, FrameInput, Scene } from '../core/scene';
+import { createCpu, type CpuController } from '../cpu/cpu';
+import { canRematch, createMatch, stepMatch, type Match } from '../logic/match';
+import type { CharacterData, Controls, InputFrame, Params } from '../logic/types';
+import { addEventEffects, createEffects, stepEffects } from '../render/effects';
+import { createTrail, stepTrail } from '../render/healthTrail';
+import { charType } from '../render/labels';
+import { fighterColor } from '../render/palette';
+import { drawFrame, type DebugInfo, type View } from '../render/render';
+import { drawBothControls, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
+import { LEVELS, resultTitle, type MatchConfig, type Mode } from './config';
+import { stepMenu } from './menu';
+import { createSelect, stepSelect, type SelectState } from './select';
+import { KO_SLOW_FRAMES, tickSlow } from './slowmo';
+
+/** シーンが使う共通のもの */
+export interface Game {
+  stack: SceneStack;
+  params: Params;
+  controls: Controls;
+  /** 選べるキャラ（データから並べる。キャラを足すと選択肢が増える） */
+  roster: CharacterData[];
+  /** 起動からのフレーム数。CPU の乱数の種に使う */
+  clock(): number;
+  debug(): DebugInfo;
+}
+
+const GAME_TITLE = 'FIGHT GAME';
+
+export class TitleScene implements Scene {
+  private frame = 0;
+  constructor(private readonly game: Game) {}
+
+  update(input: FrameInput): void {
+    this.frame++;
+    if (input.players.some((p) => p.pressed.punch)) this.game.stack.replace(new ModeScene(this.game));
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    drawScreen(ctx, GAME_TITLE, 96);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fc3';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText('〜 少ないボタンで笑える格闘ゲーム 〜', ctx.canvas.width / 2, 170);
+    // 「PRESS START」はゆっくり点滅させる
+    if (Math.floor(this.frame / 30) % 2 === 0) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 40px sans-serif';
+      ctx.fillText('PRESS START（パンチで開始）', ctx.canvas.width / 2, 360);
+    }
+    drawBothControls(ctx, this.game.controls, 520);
+  }
+}
+
+export class ModeScene implements Scene {
+  private step: 'mode' | 'level' = 'mode';
+  private index = 0;
+  private levelIndex = 1;
+  constructor(private readonly game: Game) {}
+
+  update(input: FrameInput): void {
+    if (this.step === 'mode') {
+      const r = stepMenu(this.index, 2, input.players);
+      this.index = r.index;
+      if (r.cancelled) this.game.stack.replace(new TitleScene(this.game));
+      else if (r.decided && this.index === 0) this.goSelect('versus');
+      else if (r.decided) this.step = 'level';
+      return;
+    }
+    const r = stepMenu(this.levelIndex, LEVELS.length, input.players);
+    this.levelIndex = r.index;
+    if (r.cancelled) this.step = 'mode';
+    else if (r.decided) this.goSelect('cpu');
+  }
+
+  private goSelect(mode: Mode): void {
+    this.game.stack.replace(new SelectScene(this.game, mode, LEVELS[this.levelIndex].level));
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    const cx = ctx.canvas.width / 2;
+    if (this.step === 'mode') {
+      drawScreen(ctx, 'モード選択');
+      drawMenu(ctx, ['2人対戦', 'CPU戦'], this.index, cx, 300);
+    } else {
+      drawScreen(ctx, 'CPU戦：難易度');
+      drawMenu(ctx, LEVELS.map((l) => l.label), this.levelIndex, cx, 280);
+    }
+    drawHint(ctx, '↑↓で選ぶ　パンチで決定　ガードで戻る（1P・2P どちらのキーでも）', 660);
+  }
+}
+
+export class SelectScene implements Scene {
+  private state: SelectState;
+  private doneWait = -1;
+  constructor(
+    private readonly game: Game,
+    private readonly mode: Mode,
+    private readonly level: MatchConfig['level'],
+  ) {
+    const last = Math.max(0, game.roster.length - 1);
+    this.state = createSelect(mode === 'cpu', [0, Math.min(1, last)]);
+  }
+
+  update(input: FrameInput): void {
+    const seed = this.game.clock();
+    const r = stepSelect(this.state, input.players, this.game.roster.length, seed);
+    this.state = r.state;
+    if (r.back) {
+      this.game.stack.replace(new ModeScene(this.game));
+      return;
+    }
+    if (r.done) {
+      const [a, b] = r.state.cursors;
+      const config: MatchConfig = {
+        mode: this.mode,
+        level: this.level,
+        chars: [this.game.roster[a.index].id, this.game.roster[b.index].id],
+        seed,
+      };
+      this.game.stack.replace(new FightScene(this.game, config));
+    }
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    drawScreen(ctx, 'キャラ選択', 48);
+    const roster = this.game.roster;
+    const cardW = 300;
+    const gap = 40;
+    const totalW = roster.length * cardW + (roster.length - 1) * gap;
+    const left = (ctx.canvas.width - totalW) / 2;
+    const top = 150;
+    const cardH = 340;
+    const ids = [roster[this.state.cursors[0].index].id, roster[this.state.cursors[1].index].id] as [string, string];
+    roster.forEach((char, i) => {
+      const x = left + i * (cardW + gap);
+      ctx.fillStyle = '#2a2a44';
+      ctx.fillRect(x, top, cardW, cardH);
+      // 立ち絵の代わりの四角（M5 で画像にする）
+      ctx.fillStyle = fighterColor([char.id, ''], 0);
+      ctx.fillRect(x + 20, top + 20, 70, 140);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 30px sans-serif';
+      ctx.fillText(char.name, x + 110, top + 55);
+      ctx.font = '18px sans-serif';
+      ctx.fillStyle = '#fc3';
+      ctx.fillText(charType(char), x + 110, top + 85);
+      drawMoveList(ctx, char, x + 20, top + 185);
+    });
+    const labels = ['1P', this.mode === 'cpu' ? 'CPU' : '2P'];
+    const colors = ['#f55', '#59f'];
+    this.state.cursors.forEach((c, p) => {
+      if (p === 1 && this.mode === 'cpu' && !c.decided) return;
+      const x = left + c.index * (cardW + gap);
+      const inset = p * 8;
+      ctx.strokeStyle = colors[p];
+      ctx.lineWidth = c.decided ? 8 : 4;
+      ctx.strokeRect(x - 6 + inset, top - 6 + inset, cardW + 12 - inset * 2, cardH + 12 - inset * 2);
+      ctx.fillStyle = colors[p];
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = p === 0 ? 'left' : 'right';
+      ctx.fillText(`${labels[p]}${c.decided ? ' OK!' : ''}`, p === 0 ? x : x + cardW, top - 14);
+    });
+    if (ids[0] === ids[1]) {
+      ctx.fillStyle = '#ccc';
+      ctx.textAlign = 'center';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('同じキャラ同士は 2P が色違いになります', ctx.canvas.width / 2, top + cardH + 24);
+    }
+    drawHint(ctx, '←→で選ぶ　パンチで決定　ガードで取り消し・戻る（各自のキーで）', 540);
+    drawBothControls(ctx, this.game.controls, 568);
+  }
+}
+
+export class FightScene implements Scene {
+  private match: Match;
+  private readonly cpu: CpuController | null;
+  private view: View;
+  private slow = 0;
+
+  constructor(
+    private readonly game: Game,
+    private readonly config: MatchConfig,
+  ) {
+    const chars = config.chars.map((id) => game.roster.find((c) => c.id === id) ?? game.roster[0]) as [CharacterData, CharacterData];
+    this.match = createMatch(chars, game.params);
+    this.cpu = config.mode === 'cpu' ? createCpu(config.level, game.params, config.seed) : null;
+    const [f0, f1] = this.match.battle.fighters;
+    this.view = {
+      colors: [fighterColor(config.chars, 0), fighterColor(config.chars, 1)],
+      trails: [createTrail(f0.health), createTrail(f1.health)],
+      effects: createEffects(),
+    };
+  }
+
+  /** 今の試合（テスト用） */
+  get current(): Match {
+    return this.match;
+  }
+
+  update(input: FrameInput): void {
+    if (input.pause) {
+      this.pause();
+      return;
+    }
+    const slow = tickSlow(this.slow);
+    this.slow = slow.remaining;
+    if (slow.step) this.stepMatch(input);
+
+    const fighters = this.match.battle.fighters;
+    this.view = {
+      ...this.view,
+      trails: [
+        stepTrail(this.view.trails[0], fighters[0].health, fighters[0].char.stats.health),
+        stepTrail(this.view.trails[1], fighters[1].health, fighters[1].char.stats.health),
+      ],
+      effects: stepEffects(this.view.effects),
+    };
+
+    if (canRematch(this.match, this.game.params)) {
+      this.game.stack.replace(new ResultScene(this.game, this.config, this.match.winner));
+    }
+  }
+
+  private stepMatch(input: FrameInput): void {
+    const before = this.match;
+    const p2: InputFrame = this.cpu ? this.cpu.next(before, 1) : input.players[1];
+    const after = stepMatch(before, [input.players[0], p2], this.game.params);
+    this.match = after;
+    // 対戦ロジックが進んだフレームだけ出来事を読む（開始表示・決着表示中は battle が同じものなので読まない）
+    if (after.battle !== before.battle && after.battle.events.length > 0) {
+      this.view = { ...this.view, effects: addEventEffects(this.view.effects, after.battle.events, after.battle.fighters) };
+    }
+    // KO の瞬間から少しスローにする
+    if (before.phase === 'fight' && after.phase === 'roundEnd' && after.lastResult?.reason === 'ko') {
+      this.slow = KO_SLOW_FRAMES;
+    }
+  }
+
+  private pause(): void {
+    this.game.stack.push(new PauseScene(this.game, this.config));
+  }
+
+  onBlur(): void {
+    this.pause();
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    drawFrame(ctx, this.match, this.game.params, this.view, this.game.debug());
+  }
+}
+
+export class PauseScene implements Scene {
+  private index = 0;
+  constructor(
+    private readonly game: Game,
+    private readonly config: MatchConfig,
+  ) {}
+
+  update(input: FrameInput): void {
+    const r = stepMenu(this.index, 3, input.players);
+    this.index = r.index;
+    if (input.pause || r.cancelled || (r.decided && this.index === 0)) this.game.stack.pop();
+    else if (r.decided && this.index === 1) this.game.stack.replace(new SelectScene(this.game, this.config.mode, this.config.level));
+    else if (r.decided) this.game.stack.replace(new TitleScene(this.game));
+  }
+
+  // 同じウィンドウのフォーカスがまた外れても、ポーズは重ねない
+  onBlur(): void {}
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    const { width, height } = ctx.canvas;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 56px sans-serif';
+    ctx.fillText('PAUSE', width / 2, 110);
+    drawMenu(ctx, ['再開', 'キャラ選択へ', 'タイトルへ'], this.index, width / 2, 190, 48);
+    const chars = this.config.chars.map((id) => this.game.roster.find((c) => c.id === id)!);
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#f88';
+    ctx.fillText(`1P ${chars[0].name} の技`, 80, 330);
+    drawMoveList(ctx, chars[0], 80, 358);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#8af';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`${this.config.mode === 'cpu' ? 'CPU' : '2P'} ${chars[1].name} の技`, width - 80, 330);
+    drawMoveList(ctx, chars[1], width - 80, 358, 'right');
+    drawBothControls(ctx, this.game.controls, 560);
+  }
+}
+
+export class ResultScene implements Scene {
+  private index = 0;
+  constructor(
+    private readonly game: Game,
+    private readonly config: MatchConfig,
+    private readonly winner: 0 | 1 | null,
+  ) {}
+
+  update(input: FrameInput): void {
+    const r = stepMenu(this.index, 3, input.players);
+    this.index = r.index;
+    if (!r.decided) return;
+    if (this.index === 0) this.game.stack.replace(new FightScene(this.game, this.config));
+    else if (this.index === 1) this.game.stack.replace(new SelectScene(this.game, this.config.mode, this.config.level));
+    else this.game.stack.replace(new TitleScene(this.game));
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    drawScreen(ctx, resultTitle(this.winner, this.config.mode), 80);
+    const cx = ctx.canvas.width / 2;
+    if (this.winner !== null) {
+      const char = this.game.roster.find((c) => c.id === this.config.chars[this.winner!])!;
+      // 勝ったキャラの立ち絵の代わり（M5 で画像にする）
+      ctx.fillStyle = fighterColor(this.config.chars, this.winner);
+      ctx.fillRect(cx - 50, 160, 100, 200);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.fillText(char.name, cx, 400);
+    }
+    drawMenu(ctx, ['再戦', 'キャラ選択へ', 'タイトルへ'], this.index, cx, 480, 50);
+    drawHint(ctx, '↑↓で選ぶ　パンチで決定（1P・2P どちらのキーでも）', 680);
+  }
+}
