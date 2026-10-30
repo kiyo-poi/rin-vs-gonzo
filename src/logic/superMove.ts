@@ -1,0 +1,68 @@
+import { currentAttack, getMove, startMove } from './fighter';
+import type { Fighter, HitData, InputFrame, MoveData, Params } from './types';
+
+/** 必殺とガードの「押した瞬間」の差がこの F 以内なら同時押し（08_architecture.md 2.3） */
+export const SUPER_INPUT_WINDOW = 3;
+/** 押してからの経過 F の上限（これ以上は数えない） */
+const AGE_CAP = 99;
+
+export const FRESH_PRESS_AGE = { special: AGE_CAP, guard: AGE_CAP };
+
+/** 今出している技が超必殺か */
+export function isSuperAttack(f: Fighter): boolean {
+  const cur = currentAttack(f);
+  return !!cur && getMove(f.char, cur.move).kind === 'super';
+}
+
+/** 超必殺の技データ。まだ中身のない仮置き（当たりも掴みもない）なら null */
+function superMoveOf(f: Fighter): MoveData | null {
+  const move = (f.char.moves as Record<string, MoveData | undefined>).super;
+  if (!move || move.kind !== 'super' || (move.hits.length === 0 && !move.throw)) return null;
+  return move;
+}
+
+/**
+ * stepFighter の結果に、超必殺の同時押しの受付をかける（08_architecture.md 2.3）。
+ * - 必殺とガードの押した瞬間が 3F 以内（どちらが先でもよい）で、ゲージが満タンなら、出始めの必殺技を超必殺に差し替える
+ * - 必殺を先に押した場合は必殺技がすぐ出始めていて、ガードを押したフレームに差し替える
+ * - 差し替えたフレームは技の 0F目（暗転のあと 1F目から数える）。ゲージは 0 にする
+ */
+export function applySuperInput(next: Fighter, prevAge: Fighter['pressAge'], input: InputFrame, params: Params): Fighter {
+  const pressAge = {
+    special: input.pressed.special ? 0 : Math.min(AGE_CAP, prevAge.special + 1),
+    guard: input.pressed.guard ? 0 : Math.min(AGE_CAP, prevAge.guard + 1),
+  };
+  const f: Fighter = { ...next, pressAge };
+  const superMove = superMoveOf(f);
+  if (!superMove || f.gauge < (superMove.meterCost ?? params.gauge.max)) return f;
+  const st = f.state;
+  if (st.name !== 'attack' || getMove(f.char, st.move).kind !== 'special') return f;
+  // 必殺技が「必殺を押した瞬間」に出始めたもので、もう一方のボタンが 3F 以内に押されている
+  const startedByPress = st.frame === pressAge.special + 1;
+  const together = input.pressed.special ? pressAge.guard <= SUPER_INPUT_WINDOW : input.pressed.guard && pressAge.special <= SUPER_INPUT_WINDOW;
+  if (!startedByPress || !together) return f;
+  // 差し替え：上昇する必殺技の途中でも地上から出す
+  return { ...startMove({ ...f, y: 0 }, 'super', 0), gauge: 0 };
+}
+
+/** 超必殺が今のフレームに始まったか（暗転を始める合図） */
+export function superStarted(f: Fighter): boolean {
+  return f.state.name === 'attack' && f.state.frame === 0 && getMove(f.char, f.state.move).kind === 'super';
+}
+
+/**
+ * 両者の攻撃が同時に届いた時の超必殺の扱い（08 2.4 の3番）。
+ * 片方だけ超必殺なら、超必殺でない方の攻撃を消す（超必殺が一方的に勝つ）。超必殺同士は普通の相打ち
+ */
+export function superClashPriority<R>(fighters: [Fighter, Fighter], results: [R | null, R | null]): [R | null, R | null] {
+  if (!results[0] || !results[1]) return results;
+  const s0 = isSuperAttack(fighters[0]);
+  const s1 = isSuperAttack(fighters[1]);
+  if (s0 === s1) return results;
+  return s0 ? [results[0], null] : [null, results[1]];
+}
+
+/** 超必殺がガードされた時の削りダメージ（超必殺でなければ 0）。超必殺の削りは KO できる */
+export function superChipDamage(attacker: Fighter, hit: HitData, params: Params): number {
+  return isSuperAttack(attacker) ? Math.floor(hit.damage * params.superChipRate) : 0;
+}

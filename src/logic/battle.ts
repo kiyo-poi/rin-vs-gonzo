@@ -1,15 +1,22 @@
 import { overlaps } from './boxes';
 import { activeHitbox, clampX, clashRecoil, createFighter, currentAttack, faceOpponent, hurtBoxes, isAirborne, getMove, isCrouching, isHittable, startMove, stepFighter } from './fighter';
+import { gainGauge } from './gauge';
 import { limitDistance, resolvePush } from './position';
+import { isSuperAttack, superChipDamage, superClashPriority, superStarted } from './superMove';
 import type { CharacterData, Fighter, FighterState, HitData, InputFrame, Params } from './types';
 
-export type BattleEvent = { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number } | { type: 'clash' };
+export type BattleEvent =
+  | { type: 'hit' | 'block' | 'armor'; attacker: 0 | 1; damage: number }
+  | { type: 'clash' }
+  | { type: 'superStart'; attacker: 0 | 1 };
 
 export interface Battle {
   frame: number;
   fighters: [Fighter, Fighter];
   /** このフレームに起きたことだけ。描画・音はこれを見て演出する */
   events: BattleEvent[];
+  /** 超必殺の暗転の残り F（0 なら止まっていない）。この間は2人ともタイマーも止まり、入力は捨てる。描画はこれで画面を暗くする */
+  freeze: number;
 }
 
 export function createBattle(chars: [CharacterData, CharacterData], params: Params, xs?: [number, number]): Battle {
@@ -20,11 +27,26 @@ export function createBattle(chars: [CharacterData, CharacterData], params: Para
     frame: 0,
     fighters: [createFighter(chars[0], x0, 1), createFighter(chars[1], x1, -1)],
     events: [],
+    freeze: 0,
   };
 }
 
 /** 2人を1フレーム進める */
 export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: Params): Battle {
+  // [超必殺] 暗転中は誰も動かない
+  if (b.freeze > 0) return { ...b, frame: b.frame + 1, freeze: b.freeze - 1, events: [] };
+  const stepped = stepBattleBase(b, inputs, params);
+  // [超必殺] このフレームに超必殺が始まったら、暗転を始める（技の 1F目は暗転のあと）
+  const started = ([0, 1] as const).filter((i) => superStarted(stepped.fighters[i]));
+  if (started.length === 0) return stepped;
+  return {
+    ...stepped,
+    freeze: params.superFlash,
+    events: [...stepped.events, ...started.map((attacker): BattleEvent => ({ type: 'superStart', attacker }))],
+  };
+}
+
+function stepBattleBase(b: Battle, inputs: [InputFrame, InputFrame], params: Params): Battle {
   const [before0, before1] = b.fighters;
   const stepped: [Fighter, Fighter] = [
     stepFighter(before0, inputs[0], before1.x, params),
@@ -36,7 +58,8 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
   const moved: [Fighter, Fighter] = [faceOpponent(pushed[0], pushed[1].x), faceOpponent(pushed[1], pushed[0].x)];
 
   // 両者とも「動かしたあとの同じ状態」で調べる（1P が先に処理されて有利にならないように）
-  const results = [resolveAttack(moved[0], moved[1]), resolveAttack(moved[1], moved[0])];
+  // [超必殺] 片方だけ超必殺なら、もう片方の攻撃は消える（超必殺が一方的に勝つ）
+  const results = superClashPriority(moved, [resolveAttack(moved[0], moved[1]), resolveAttack(moved[1], moved[0])]);
 
   // 両者の攻撃が同時に届いたら相打ち。ダメージ・ガード・ノックバックなしで両者が弾かれる。
   // ただし片方がアーマーで耐えられるなら相打ちにせず、アーマー側が耐えてアーマー側の打撃が当たる（08 2.4 の3番）
@@ -45,6 +68,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       frame: b.frame + 1,
       fighters: [clashRecoil(moved[0], params), clashRecoil(moved[1], params)],
       events: [{ type: 'clash' }],
+      freeze: 0,
     };
   }
 
@@ -69,17 +93,22 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
       const absorbed = { ...d, health: Math.max(0, d.health - damage), armorLeft: d.armorLeft - 1 };
       fighters[defender] = onAbsorb ? startMove(absorbed, onAbsorb, 0) : absorbed;
       events.push({ type: 'armor', attacker, damage });
+      [fighters[0], fighters[1]] = gainGauge(fighters, attacker, 'armor', damage, false, params);
       return;
     }
     if (result.blocked) {
       // ガード固定の技は、1発目がガードされたら残りの当たりもガード扱いにする
       const cur = currentAttack(fighters[attacker]);
       if (cur && getMove(fighters[attacker].char, cur.move).guardLock) fighters[attacker] = { ...fighters[attacker], guardLocked: true };
+      // [超必殺] 超必殺の削りは KO できる
+      const chip = superChipDamage(fighters[attacker], result.hit, params);
       fighters[defender] = {
         ...fighters[defender],
+        health: Math.max(0, fighters[defender].health - chip),
         state: { name: 'blockstun', frame: 0, duration: weight.blockstun, crouch: isCrouching(fighters[defender]) },
       };
-      events.push({ type: 'block', attacker, damage: 0 });
+      events.push({ type: 'block', attacker, damage: chip });
+      [fighters[0], fighters[1]] = gainGauge(fighters, attacker, 'guarded', result.hit.damage, isSuperAttack(fighters[attacker]), params);
     } else {
       const d = fighters[defender];
       const health = Math.max(0, d.health - result.hit.damage);
@@ -94,6 +123,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
         : { name: 'hitstun', frame: 0, duration: weight.hitstun, crouch: isCrouching(d) };
       fighters[defender] = { ...d, health, y: wasAir && health === 0 ? 0 : d.y, state };
       events.push({ type: 'hit', attacker, damage: result.hit.damage });
+      [fighters[0], fighters[1]] = gainGauge(fighters, attacker, 'hit', result.hit.damage, isSuperAttack(fighters[attacker]), params);
     }
     const distance = weight.knockback * (result.blocked ? params.blockKnockbackRate : 1);
     const [pushedAttacker, pushedDefender] = applyKnockback(fighters[attacker], fighters[defender], distance, params);
@@ -103,7 +133,7 @@ export function stepBattle(b: Battle, inputs: [InputFrame, InputFrame], params: 
 
   // ノックバックのあとにも、2人の距離の上限をかけ直す（画面端は applyKnockback の clampX が守る）
   const limited = limitDistance(fighters, beforeKnockback, params);
-  return { frame: b.frame + 1, fighters: limited, events };
+  return { frame: b.frame + 1, fighters: limited, events, freeze: 0 };
 }
 
 function markHitDone(f: Fighter, index: number): Fighter {
@@ -120,7 +150,8 @@ function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; in
   if (active.hit.groundOnly && isAirborne(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
   const blocked = attacker.guardLocked || defender.state.name === 'guard' || defender.state.name === 'blockstun';
-  return { hit: active.hit, index: active.index, blocked, armored: isArmored(defender) };
+  // [超必殺] 超必殺はアーマーを無視する
+  return { hit: active.hit, index: active.index, blocked, armored: isArmored(defender) && !isSuperAttack(attacker) };
 }
 
 /** 守る側が今、アーマーで打撃を耐えられるか（技のアーマー区間の中で、耐えられる数が残っている） */
