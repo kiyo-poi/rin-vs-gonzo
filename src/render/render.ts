@@ -52,6 +52,11 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
   }
   ctx.fillStyle = '#556';
   ctx.fillRect(0, groundY, width, height - groundY);
+  // 超必殺の暗転：背景を暗くする（キャラはその上に描く）
+  if (battle.freeze > 0) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const mirror = battle.fighters[0].char.id === battle.fighters[1].char.id;
   battle.fighters.forEach((f, i) => {
@@ -89,7 +94,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
   for (const e of view.effects.list) drawEffect(ctx, e, e.x - camX, groundY - e.y);
   ctx.restore();
 
-  battle.fighters.forEach((f, i) => drawHealth(ctx, f, i, width, view.trails[i]));
+  battle.fighters.forEach((f, i) => {
+    drawHealth(ctx, f, i, width, view.trails[i]);
+    drawGauge(ctx, f, i, width, height, params);
+  });
   drawHud(ctx, match, params, width);
 
   if (debug.show) {
@@ -175,4 +183,18 @@ function drawEffect(ctx: CanvasRenderingContext2D, e: Effect, sx: number, sy: nu
     }
   }
   ctx.restore();
+}
+
+/** 超必殺のゲージ。画面の下、1P は左・2P は右。満タンで色が変わる */
+function drawGauge(ctx: CanvasRenderingContext2D, f: Fighter, index: number, width: number, height: number, params: Params): void {
+  const barW = 300;
+  const barH = 14;
+  const top = height - 80;
+  const x = index === 0 ? HEALTH_BAR.side : width - HEALTH_BAR.side - barW;
+  ctx.fillStyle = '#113';
+  ctx.fillRect(x, top, barW, barH);
+  const full = f.gauge >= params.gauge.max;
+  ctx.fillStyle = full ? '#6ff' : '#36c';
+  const w = (barW * f.gauge) / params.gauge.max;
+  ctx.fillRect(index === 0 ? x : x + barW - w, top, w, barH);
 }

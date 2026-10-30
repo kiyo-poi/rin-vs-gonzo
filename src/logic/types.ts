@@ -62,7 +62,9 @@ export interface MoveData {
   landingRecovery?: number;
   hits: HitData[];
   /** 省略時は normal */
-  kind?: 'normal' | 'special' | 'throw';
+  kind?: 'normal' | 'special' | 'throw' | 'super';
+  /** 超必殺のゲージ消費（kind: 'super' の時だけ） */
+  meterCost?: number;
   movement?: MoveStep[];
   /** 無敵のフレーム区間（技の何F目か） */
   invincible?: FrameRange[];
@@ -76,7 +78,7 @@ export interface MoveData {
 /** 技を出すボタンの枠（掴み・必殺などは M3b 以降） */
 export type MoveSlot =
   | 'punch' | 'kick' | 'crouchPunch' | 'crouchKick' | 'airPunch' | 'airKick'
-  | 'special' | 'forwardSpecial' | 'downSpecial' | 'grab';
+  | 'special' | 'forwardSpecial' | 'downSpecial' | 'grab' | 'super';
 
 export interface CharacterData {
   id: string;
@@ -149,6 +151,10 @@ export interface Params {
   render: { groundY: number };
   /** CPU の難易度ごとの値（reaction は反応の遅れ F） */
   cpu?: Record<'easy' | 'normal' | 'hard', { reaction: number; guardRate: number; specialRate: number }>;
+  /** ゲージ。増える量はダメージ × 倍率（当てた側 / 食らった側 / ガードさせた側）。端数は切り捨て */
+  gauge: { max: number; onHit: number; onHurt: number; onGuarded: number };
+  /** 超必殺の暗転（全体停止）F */
+  superFlash: number;
 }
 
 export type ButtonKeys = Record<Button, string[]>;
@@ -226,4 +232,8 @@ export interface Fighter {
   combo: { moves: number; hits: number };
   /** 起き上がり無敵の残りフレーム（0 なら無敵ではない） */
   invincible: number;
+  /** 超必殺のゲージ（0〜params.gauge.max の整数）。ラウンドをまたいで持ち越す */
+  gauge: number;
+  /** 必殺・ガードを押してから何F経ったか（押したフレームが 0）。超必殺の同時押しの受付に使う（superMove.ts） */
+  pressAge: { special: number; guard: number };
 }

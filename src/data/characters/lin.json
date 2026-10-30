@@ -332,6 +332,42 @@
         "damage": 80,
         "techable": true
       }
+    },
+    "super": {
+      "name": "百裂連拳フィナーレ",
+      "posture": "stand",
+      "startup": 8,
+      "active": 10,
+      "recovery": 30,
+      "hits": [
+        {
+          "damage": 250,
+          "weight": "heavy",
+          "box": {
+            "x": 20,
+            "y": 50,
+            "w": 100,
+            "h": 80
+          }
+        }
+      ],
+      "kind": "super",
+      "meterCost": 1000,
+      "movement": [
+        {
+          "frames": {
+            "from": 1,
+            "to": 8
+          },
+          "dx": 500
+        }
+      ],
+      "invincible": [
+        {
+          "from": 1,
+          "to": 8
+        }
+      ]
     }
   }
 }

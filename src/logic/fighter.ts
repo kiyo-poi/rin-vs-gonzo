@@ -1,4 +1,5 @@
 import { toWorld } from './boxes';
+import { applySuperInput, FRESH_PRESS_AGE, limitSuperDash } from './superMove';
 import type { Box, InputBuffer, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, MoveSlot, Params, Posture } from './types';
 
 export function createFighter(char: CharacterData, x: number, facing: 1 | -1): Fighter {
@@ -15,6 +16,8 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     buffer: null,
     combo: { moves: 0, hits: 0 },
     invincible: 0,
+    gauge: 0,
+    pressAge: FRESH_PRESS_AGE,
   };
 }
 
@@ -171,8 +174,13 @@ function slotOf(buffer: InputBuffer): MoveSlot {
   }
 }
 
-/** 1フレーム進める */
+/** 1フレーム進める。超必殺の同時押しの受付（superMove.ts）は、普通に進めた結果に後からかける */
 export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
+  const next = limitSuperDash(prev, stepFighterBase(prev, input, opponentX, params), opponentX);
+  return applySuperInput(next, prev.pressAge, input, params);
+}
+
+function stepFighterBase(prev: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
   const f: Fighter = { ...prev, buffer: nextBuffer(prev, input, opponentX, params), invincible: Math.max(0, prev.invincible - 1) };
   const st = f.state;
   switch (st.name) {

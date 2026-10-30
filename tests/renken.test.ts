@@ -42,12 +42,12 @@ describe('連拳', () => {
     b = stepBattle(b, [inputOf([], ['special']), inputOf(['guard'])], params);
     for (let i = 2; i < 8; i++) b = stepBattle(b, [NONE, inputOf(['guard'])], params);
     b = stepBattle(b, [NONE, inputOf(['guard'])], params);
-    expect(b.events).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(b.events).toEqual([{ type: 'block', attacker: 0, damage: 3 }]); // 削り 18×0.2＝3
     // 守る側を待機に戻しても、ガード固定の間は 2発目もガードになる
     b = { ...b, fighters: [b.fighters[0], { ...b.fighters[1], state: { name: 'idle', frame: 1 } }] };
     for (let i = 9; i < 12; i++) b = stepBattle(b, [NONE, NONE], params);
     b = stepBattle(b, [NONE, NONE], params);
-    expect(b.events).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(b.events).toEqual([{ type: 'block', attacker: 0, damage: 3 }]); // 削り 18×0.2＝3
   });
 
   it('1発目が当たっていたら、ガード固定にはならない', () => {
