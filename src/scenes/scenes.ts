@@ -9,10 +9,11 @@ import { charType } from '../render/labels';
 import { fighterColor } from '../render/palette';
 import { drawPortrait } from '../render/portrait';
 import type { SpriteStore } from '../render/sprites';
+import type { ImageStore } from '../render/images';
 import { phaseMessage } from '../render/hud';
 import { drawFrame, type DebugInfo, type View } from '../render/render';
 import { drawBothControls, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
-import { LEVELS, resolveChar, resolveChars, resultTitle, type MatchConfig, type Mode } from './config';
+import { LEVELS, resolveChar, resolveChars, resultTitle, stageForMatch, type MatchConfig, type Mode } from './config';
 import { stepMenu } from './menu';
 import { createSelect, stepSelect, type SelectState } from './select';
 import { KO_SLOW_FRAMES, tickSlow } from './slowmo';
@@ -31,6 +32,7 @@ export interface Game {
   audio?: Audio;
   /** 画像の置き場（無ければ代わりのキャラを描く） */
   sprites?: SpriteStore;
+  images?: ImageStore;
 }
 
 /** メニューの効果音：動いたら move、決定は decide、取り消しは cancel */
@@ -41,6 +43,7 @@ function menuSound(game: Game, index: number, r: { index: number; decided: boole
 }
 
 const GAME_TITLE = 'FIGHT GAME';
+const TITLE_LOGO = 'ui/title_logo.png';
 
 export class TitleScene implements Scene {
   private frame = 0;
@@ -57,11 +60,18 @@ export class TitleScene implements Scene {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
-    drawScreen(ctx, GAME_TITLE, 96);
+    const logo = this.game.images?.get(TITLE_LOGO) ?? null;
+    if (logo) {
+      drawScreen(ctx, '');
+      // 960×360 の原画を半分（480×180）にして上部中央へ
+      ctx.drawImage(logo, (ctx.canvas.width - 480) / 2, 10, 480, 180);
+    } else {
+      drawScreen(ctx, GAME_TITLE, 96);
+    }
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fc3';
     ctx.font = 'bold 28px sans-serif';
-    ctx.fillText('〜 少ないボタンで笑える格闘ゲーム 〜', ctx.canvas.width / 2, 170);
+    ctx.fillText('〜 少ないボタンで笑える格闘ゲーム 〜', ctx.canvas.width / 2, logo ? 215 : 170);
     // 「PRESS START」はゆっくり点滅させる
     if (Math.floor(this.frame / 30) % 2 === 0) {
       ctx.fillStyle = '#fff';
@@ -233,6 +243,8 @@ export class FightScene implements Scene {
       trails: [createTrail(f0.health), createTrail(f1.health)],
       effects: createEffects(),
       sprites: game.sprites,
+      images: game.images,
+      stageId: stageForMatch(chars, config.mode),
     };
     game.audio?.startBgm('stage');
     // 最初の「ROUND 1」はステップ前から出ているので、ここで鳴らす

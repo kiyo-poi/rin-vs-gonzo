@@ -1,5 +1,6 @@
 import { createAudio } from './audio/audio';
 import { createSpriteStore } from './render/sprites';
+import { createImageStore } from './render/images';
 import { createFixedStep } from './core/loop';
 import { SceneStack } from './core/scene';
 import { characters, controls, params } from './data/data';
@@ -17,6 +18,7 @@ keyboard.attach(window);
 
 const audio = createAudio();
 const sprites = createSpriteStore(import.meta.env.BASE_URL);
+const images = createImageStore(import.meta.env.BASE_URL);
 // ブラウザの決まりで、音は最初のキー入力の後から鳴らせる
 window.addEventListener('keydown', () => audio.unlock(), { once: true });
 
@@ -30,6 +32,7 @@ const game: Game = {
   clock: () => clock,
   audio,
   sprites,
+  images,
   debug: () => {
     const keys = keyboard.snapshot();
     return { show: import.meta.env.DEV, keys: { p1: keysFor(keys, controls.p1), p2: keysFor(keys, controls.p2) } };

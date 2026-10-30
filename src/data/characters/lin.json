@@ -1,6 +1,7 @@
 {
   "id": "lin",
   "name": "リン",
+  "stageId": "chinatown",
   "stats": {
     "health": 850,
     "walkSpeed": 5,

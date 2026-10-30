@@ -2,6 +2,7 @@ import { isArmored } from '../logic/battle';
 import { activeHitbox, hurtBoxes } from '../logic/fighter';
 import { timerSeconds, type Match } from '../logic/match';
 import type { Box, Fighter, Params } from '../logic/types';
+import { stagePath, type ImageStore } from './images';
 import { cameraX } from './camera';
 import { shakeOffset, type Effect, type EffectsState } from './effects';
 import type { Trail } from './healthTrail';
@@ -23,6 +24,10 @@ export interface View {
   effects: EffectsState;
   /** 画像の置き場（無ければ代わりのキャラを描く） */
   sprites?: SpriteStore;
+  /** 背景・ロゴなどの画像置き場（無ければ単色の背景） */
+  images?: ImageStore;
+  /** 戦うステージの id（stages/stage_<id>.jpg） */
+  stageId?: string;
 }
 
 const HEALTH_BAR = { width: 500, height: 24, top: 30, side: 40 };
@@ -41,18 +46,24 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
   // ロジックはステージ座標・上がプラス、Canvas は画面座標・下がプラスなので変換する
   const toScreen = (b: Box) => ({ x: b.x - camX, y: groundY - b.y - b.h, w: b.w, h: b.h });
 
-  ctx.fillStyle = '#223';
-  ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = '#334';
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= params.stage.width; x += GRID) {
-    ctx.beginPath();
-    ctx.moveTo(x - camX, 0);
-    ctx.lineTo(x - camX, groundY);
-    ctx.stroke();
+  const bg = view.stageId ? view.images?.get(stagePath(view.stageId)) ?? null : null;
+  if (bg) {
+    // 画像はステージ全体（1920×720）。床は画像の下から約100px（y≒620）で groundY と一致する
+    ctx.drawImage(bg, -camX, 0, params.stage.width, height);
+  } else {
+    ctx.fillStyle = '#223';
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = '#334';
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= params.stage.width; x += GRID) {
+      ctx.beginPath();
+      ctx.moveTo(x - camX, 0);
+      ctx.lineTo(x - camX, groundY);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#556';
+    ctx.fillRect(0, groundY, width, height - groundY);
   }
-  ctx.fillStyle = '#556';
-  ctx.fillRect(0, groundY, width, height - groundY);
   // 超必殺の暗転：背景を暗くする（キャラはその上に描く）
   if (battle.freeze > 0) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';

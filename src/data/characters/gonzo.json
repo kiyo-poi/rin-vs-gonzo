@@ -1,6 +1,7 @@
 {
   "id": "gonzo",
   "name": "ゴンゾー",
+  "stageId": "ring",
   "stats": {
     "health": 1150,
     "walkSpeed": 3,

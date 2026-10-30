@@ -38,3 +38,8 @@ export function resolveChar(roster: readonly CharacterData[], id: string): Chara
 export function resolveChars(roster: readonly CharacterData[], ids: readonly [string, string]): [CharacterData, CharacterData] {
   return [resolveChar(roster, ids[0]), resolveChar(roster, ids[1])];
 }
+
+/** 戦うステージ。2P のキャラのステージで戦う（CPU 戦は CPU が 2P なので CPU のキャラのステージ） */
+export function stageForMatch(chars: readonly [CharacterData, CharacterData], _mode: Mode): string {
+  return chars[1].stageId;
+}

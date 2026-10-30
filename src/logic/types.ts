@@ -89,6 +89,8 @@ export type MoveSlot =
 export interface CharacterData {
   id: string;
   name: string;
+  /** このキャラのステージ（stages/stage_<stageId>.jpg）。2P のキャラのステージで戦う */
+  stageId: string;
   stats: {
     health: number;
     /** 歩き速度 px/F */
