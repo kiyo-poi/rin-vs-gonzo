@@ -82,12 +82,16 @@ export function isHittable(f: Fighter): boolean {
   return true;
 }
 
-/** 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技が消えて落ち続け、着地しても弾かれた時間が終わるまで動けない（used は残す） */
+/**
+ * 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技が消えて落ち続け、着地しても弾かれた時間が終わるまで動けない（used は残す）。
+ * ジャンプ以外で宙にいる（昇り蹴りの上昇中など）なら、空中やられで落とす（着地でダウン。弾かれたまま宙に残らないように）
+ */
 export function clashRecoil(f: Fighter, params: Params): Fighter {
   if (f.state.name === 'air') {
     // 空中の側も地上の側と同じ時間だけ動けなくする：空中技を消し、着地の隙を弾かれた時間以上にする
     return { ...f, hitDone: allDone(f), state: { ...f.state, attack: null, recoilLeft: params.clashRecoil } };
   }
+  if (f.y > 0) return { ...f, hitDone: allDone(f), state: { name: 'airHit', frame: 0 } };
   return { ...f, hitDone: allDone(f), state: { name: 'recoil', frame: 0, duration: params.clashRecoil } };
 }
 
@@ -283,6 +287,8 @@ function stepFighterBase(prev: Fighter, input: InputFrame, opponentX: number, pa
 
 /** 自由に動ける状態（待機・歩き・しゃがみ・ガード）で、このフレームの行動を決める */
 function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
+  // 念のため：宙にいるまま自由な状態にはしない（落として、着地でダウン）
+  if (f.y > 0) return { ...f, hitDone: [], buffer: null, state: { name: 'airHit', frame: 0 } };
   const facing: 1 | -1 = opponentX === f.x ? f.facing : opponentX > f.x ? 1 : -1;
   const held = input.held;
   // 左右同時押しは 0（どちらも押していない扱い）

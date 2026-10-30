@@ -103,7 +103,9 @@ export function createCpu(level: CpuLevel, params: Params, seed: number): CpuCon
       seenAttack = false;
       guarding = false;
     }
-    if (guarding && oppAttack && isFree(me) && dist <= oppReach + 60) {
+    // ガード中・ガード硬直中もガードを押し続ける（離すと次のフレームに自由になり、1F おきにしかガードしなくなる）
+    const canGuard = isFree(me) || me.state.name === 'guard' || me.state.name === 'blockstun';
+    if (guarding && oppAttack && canGuard && dist <= oppReach + 60) {
       held.guard = true;
       if (getMove(seen.char, oppAttack).posture === 'crouch') held.down = true;
       return;

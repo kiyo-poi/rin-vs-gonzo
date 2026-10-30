@@ -190,7 +190,8 @@ function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; in
   // 地上だけに当たる当たり（衝撃波）は、空中の相手には当たらない
   if (active.hit.groundOnly && isAirborne(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
-  const blocked = attacker.guardLocked || defender.state.name === 'guard' || defender.state.name === 'blockstun';
+  // ガード固定は地上の相手だけ（宙の相手をガード硬直にすると、宙に止まったままになる）
+  const blocked = (attacker.guardLocked && !isAirborne(defender)) || defender.state.name === 'guard' || defender.state.name === 'blockstun';
   // [超必殺] 超必殺はアーマーを無視する
   return { hit: active.hit, index: active.index, blocked, armored: isArmored(defender) && !isSuperAttack(attacker) };
 }
