@@ -123,13 +123,15 @@ chibi, super deformed, 2.5 heads tall, anime style, thick bold black outlines, f
 **`assets/` の中身はすべて、公開したゲームの一部としてそのまま公開される。** キャラ設定シート・下書き・プロンプトのメモなど、公開したくないものは `assets/` の外（例：`fighting-game/art-work/`）に置く。
 
 ```
+fighting-game/characters/
+  lin/     lin_idle.png, lin_walk.png, … lin_cutin.png, lin_portrait.png（22枚）
+  gonzo/   gonzo_idle.png, … gonzo_portrait.png（22枚）
 fighting-game/assets/images/
-  characters/
-    lin/     lin_idle.png, lin_walk.png, … lin_cutin.png, lin_portrait.png（22枚）
-    gonzo/   gonzo_idle.png, … gonzo_portrait.png（22枚）
-  stages/    stage_chinatown.jpg, stage_ring.jpg
-  ui/        title_logo.png（あれば）
+  stages/  stage_chinatown.jpg, stage_ring.jpg
+  ui/      title_logo.png（あれば）
 ```
+
+- キャラ画像は `fighting-game/characters/` に置く（`assets/images/characters` はこのフォルダを指すリンク。ゲームはここから読む）
 
 - [ ] 置いたら Claude に「画像を置いた」と伝える。足りない画像があっても、ある分から組み込み、無い分は今の四角で代わりに描く
 - [ ] 使ったツールの名前と、規約で求められているクレジット表記があれば一緒に伝える（`assets/CREDITS.md` に書く）

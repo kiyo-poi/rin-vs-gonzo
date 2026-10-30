@@ -32,9 +32,9 @@ npm run dev
 
 ## キャラの画像を差し替える
 
-今はコードで描いた仮のキャラで表示している。AI 画像で作る手順は `docs/10_ai_image_instructions.md`。`assets/images/characters/<lin|gonzo>/` に決まった名前の PNG を置くと、その画像で表示される（無い画像は仮のキャラのまま）。
+今はコードで描いた仮のキャラで表示している。AI 画像で作る手順は `docs/10_ai_image_instructions.md`。`characters/<lin|gonzo>/` に決まった名前の PNG を置くと（`assets/images/characters` はこのフォルダへのリンク）、その画像で表示される（無い画像は仮のキャラのまま）。
 
-`assets/` の中身はすべて公開される。下書きや設定シートは `art-work/`（git の管理外）に置く。
+`assets/` と `characters/` の中身はすべて公開される。下書きや設定シートは `art-work/`（git の管理外）に置く。
 
 ## 開発
 

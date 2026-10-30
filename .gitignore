@@ -1,3 +1,4 @@
 node_modules/
 dist/
 art-work/
+.DS_Store
