@@ -16,7 +16,7 @@ export type SoundName =
   | 'ui_move' | 'ui_decide' | 'ui_cancel';
 
 /** ダメージから重さを決める（イベントに weight が無い時の代わり） */
-export const DAMAGE_THRESHOLDS = { light: 7, medium: 12 } as const;
+export const DAMAGE_THRESHOLDS = { light: 40, medium: 80 } as const;
 
 /** BattleEvent（今後増える種類も含めてゆるく読む） */
 type LooseEvent = { type: string; weight?: unknown; damage?: unknown };
@@ -52,10 +52,27 @@ export function soundForEvent(ev: LooseEvent): SoundName | null {
   }
 }
 
+/**
+ * 試合の進行の表示（hud.ts の phaseMessage）が変わった時に鳴らす音。変わっていなければ null。
+ * ROUND n → round、FIGHT! → fight、K.O. → ko、TIME UP → timeup、DRAW → draw、nP WIN → win
+ */
+export function soundForPhaseMessage(before: string | null, after: string | null): SoundName | null {
+  if (after === null || after === before) return null;
+  if (after.startsWith('ROUND')) return 'round';
+  if (after === 'FIGHT!') return 'fight';
+  if (after.endsWith('K.O.')) return 'ko';
+  if (after === 'TIME UP') return 'timeup';
+  if (after.endsWith('WIN')) return 'win';
+  if (after.startsWith('DRAW')) return 'draw';
+  return null;
+}
+
 export interface Audio {
   unlock(): void;
   playEvents(events: BattleEvent[]): void;
   playUi(kind: UiKind): void;
+  /** 名前で1つ鳴らす（試合の進行：ROUND / FIGHT / KO / TIME UP / WIN など） */
+  playSound(name: SoundName): void;
   startBgm(name: BgmName): void;
   stopBgm(): void;
 }
@@ -257,6 +274,9 @@ export function createAudio(): Audio {
         const s = soundForEvent(ev);
         if (s && !played.has(s)) { played.add(s); play(s); }
       }
+    },
+    playSound(name) {
+      play(name);
     },
     playUi(kind) {
       play(kind === 'move' ? 'ui_move' : kind === 'decide' ? 'ui_decide' : 'ui_cancel');

@@ -276,6 +276,22 @@
         "damage": 140,
         "techable": true
       }
+    },
+    "super": {
+      "name": "ジャイアントスイング",
+      "posture": "stand",
+      "startup": 3,
+      "active": 3,
+      "recovery": 40,
+      "hits": [],
+      "kind": "super",
+      "meterCost": 1000,
+      "throw": {
+        "range": 100,
+        "damage": 300,
+        "techable": false,
+        "carry": 300
+      }
     }
   },
   "subMoves": {

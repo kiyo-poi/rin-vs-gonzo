@@ -1,4 +1,5 @@
 import { createBattle, stepBattle, type Battle } from './battle';
+import { carryGauge } from './gauge';
 import type { CharacterData, InputFrame, Params } from './types';
 
 /** 1秒のフレーム数（タイマーの表示用。ゲームは 60fps 固定） */
@@ -86,7 +87,8 @@ export function stepMatch(m: Match, inputs: [InputFrame, InputFrame], params: Pa
 
 function fight(m: Match, inputs: [InputFrame, InputFrame], params: Params): Match {
   const battle = stepBattle(m.battle, inputs, params);
-  const timeLeft = m.timeLeft - 1;
+  // [超必殺] 暗転中はタイマーも止める
+  const timeLeft = m.battle.freeze > 0 ? m.timeLeft : m.timeLeft - 1;
   const result = judgeRound(battle, timeLeft);
   if (!result) return { ...m, battle, timeLeft, phaseFrame: m.phaseFrame + 1 };
   // 勝者に1勝。引き分けなら両者に1勝
@@ -108,7 +110,8 @@ function nextRound(m: Match, params: Params): Match {
   return {
     ...m,
     round: m.round + 1,
-    battle: createBattle(m.chars, params, m.startXs),
+    // [ゲージ] ゲージは次のラウンドに持ち越す
+    battle: (() => { const b = createBattle(m.chars, params, m.startXs); return { ...b, fighters: carryGauge(b.fighters, m.battle.fighters) }; })(),
     phase: 'intro',
     phaseFrame: 0,
     timeLeft: params.round.timeFrames,

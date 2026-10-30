@@ -20,6 +20,13 @@ describe('演出', () => {
     expect(s.list[4].text).toBe('カキーン');
     expect(s.shake).toBe(0);
   });
+  it('投げ抜けは「パシッ」、アーマーは白い火花と「ガキン」、投げは「ガシッ」', () => {
+    const texts = (type: string) => addEventEffects(createEffects(), [{ type, attacker: 0, damage: 10 } as never], fighters).list.map((e) => e.text).filter(Boolean);
+    expect(texts('tech')).toEqual(['パシッ']);
+    expect(texts('armor')).toEqual(['ガキン']);
+    expect(texts('throw')).toEqual(['ガシッ']);
+    expect(addEventEffects(createEffects(), [{ type: 'armor', attacker: 0, damage: 10 } as never], fighters).list[0].kind).toBe('blockSpark');
+  });
   it('重い技だけ画面が揺れ、擬音が変わる', () => {
     const byWeight = addEventEffects(createEffects(), [{ type: 'hit', attacker: 0, damage: 10, weight: 'heavy' } as never], fighters);
     expect(byWeight.shake).toBe(SHAKE_FRAMES);

@@ -1,4 +1,5 @@
 import { toWorld } from './boxes';
+import { applySuperInput, FRESH_PRESS_AGE, limitSuperDash } from './superMove';
 import type { Box, InputBuffer, CharacterData, Fighter, FreeStateName, HitData, InputFrame, MoveData, MoveSlot, Params, Posture } from './types';
 
 export function createFighter(char: CharacterData, x: number, facing: 1 | -1): Fighter {
@@ -15,6 +16,8 @@ export function createFighter(char: CharacterData, x: number, facing: 1 | -1): F
     buffer: null,
     combo: { moves: 0, hits: 0 },
     invincible: 0,
+    gauge: 0,
+    pressAge: FRESH_PRESS_AGE,
   };
 }
 
@@ -79,12 +82,16 @@ export function isHittable(f: Fighter): boolean {
   return true;
 }
 
-/** 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技が消えて落ち続け、着地しても弾かれた時間が終わるまで動けない（used は残す） */
+/**
+ * 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技が消えて落ち続け、着地しても弾かれた時間が終わるまで動けない（used は残す）。
+ * ジャンプ以外で宙にいる（昇り蹴りの上昇中など）なら、空中やられで落とす（着地でダウン。弾かれたまま宙に残らないように）
+ */
 export function clashRecoil(f: Fighter, params: Params): Fighter {
   if (f.state.name === 'air') {
     // 空中の側も地上の側と同じ時間だけ動けなくする：空中技を消し、着地の隙を弾かれた時間以上にする
     return { ...f, hitDone: allDone(f), state: { ...f.state, attack: null, recoilLeft: params.clashRecoil } };
   }
+  if (f.y > 0) return { ...f, hitDone: allDone(f), state: { name: 'airHit', frame: 0 } };
   return { ...f, hitDone: allDone(f), state: { name: 'recoil', frame: 0, duration: params.clashRecoil } };
 }
 
@@ -171,8 +178,13 @@ function slotOf(buffer: InputBuffer): MoveSlot {
   }
 }
 
-/** 1フレーム進める */
+/** 1フレーム進める。超必殺の同時押しの受付（superMove.ts）は、普通に進めた結果に後からかける */
 export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
+  const next = limitSuperDash(prev, stepFighterBase(prev, input, opponentX, params), opponentX);
+  return applySuperInput(next, prev.pressAge, input, params);
+}
+
+function stepFighterBase(prev: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
   const f: Fighter = { ...prev, buffer: nextBuffer(prev, input, opponentX, params), invincible: Math.max(0, prev.invincible - 1) };
   const st = f.state;
   switch (st.name) {
@@ -204,8 +216,10 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
     }
     case 'thrown': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
-      // 投げ終わり：ダメージを受けてダウン
-      return { ...f, health: Math.max(0, f.health - st.damage), state: { name: 'knockdown', frame: 0, duration: params.knockdownFrames } };
+      // 投げ終わり：ダメージを受けてダウン。carry があれば投げた側から離れる向き（画面端の方）へ運ぶ
+      const away = f.x === opponentX ? -f.facing : f.x > opponentX ? 1 : -1;
+      const x = st.carry ? clampX(f.x + away * st.carry, params) : f.x;
+      return { ...f, x, health: Math.max(0, f.health - st.damage), state: { name: 'knockdown', frame: 0, duration: params.knockdownFrames } };
     }
     case 'knockdown': {
       if (st.frame + 1 <= st.duration) return { ...f, state: { ...st, frame: st.frame + 1 } };
@@ -273,6 +287,8 @@ export function stepFighter(prev: Fighter, input: InputFrame, opponentX: number,
 
 /** 自由に動ける状態（待機・歩き・しゃがみ・ガード）で、このフレームの行動を決める */
 function stepFree(f: Fighter, input: InputFrame, opponentX: number, params: Params): Fighter {
+  // 念のため：宙にいるまま自由な状態にはしない（落として、着地でダウン）
+  if (f.y > 0) return { ...f, hitDone: [], buffer: null, state: { name: 'airHit', frame: 0 } };
   const facing: 1 | -1 = opponentX === f.x ? f.facing : opponentX > f.x ? 1 : -1;
   const held = input.held;
   // 左右同時押しは 0（どちらも押していない扱い）

@@ -25,5 +25,7 @@
     "easy": { "reaction": 30, "guardRate": 0.2, "specialRate": 0.05 },
     "normal": { "reaction": 18, "guardRate": 0.5, "specialRate": 0.25 },
     "hard": { "reaction": 10, "guardRate": 0.8, "specialRate": 0.5 }
-  }
+  },
+  "gauge": { "max": 1000, "onHit": 0.8, "onHurt": 0.4, "onGuarded": 0.3 },
+  "superFlash": 30
 }

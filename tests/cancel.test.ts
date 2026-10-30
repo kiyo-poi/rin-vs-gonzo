@@ -44,14 +44,14 @@ describe('キャンセル', () => {
 
   it('ジャブがヒットしたあと、硬直中に →＋必殺を押すと、その場で突進掌が出る', () => {
     const t = run([400, 470], 7, jabThen(NONE, inputOf(['right'], ['special'])));
-    expect(t[4].events).toEqual([{ type: 'hit', attacker: 0, damage: 30 }]); // ジャブは5F目に当たる
+    expect(t[4].events).toMatchObject([{ type: 'hit', attacker: 0, damage: 30 }]); // ジャブは5F目に当たる
     expect(t[4].fighters[0].state).toMatchObject({ name: 'attack', move: 'punch', frame: 5 });
     expect(t[5].fighters[0].state).toEqual({ name: 'attack', frame: 1, move: 'forwardSpecial' });
   });
 
   it('ガードされた時もキャンセルできる', () => {
     const t = run([400, 470], 7, jabThen(inputOf(['guard']), inputOf(['right'], ['special'])));
-    expect(t[4].events).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(t[4].events).toMatchObject([{ type: 'block', attacker: 0, damage: 0 }]);
     expect(t[5].fighters[0].state).toEqual({ name: 'attack', frame: 1, move: 'forwardSpecial' });
   });
 

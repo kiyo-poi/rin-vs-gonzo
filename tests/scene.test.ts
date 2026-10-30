@@ -80,3 +80,13 @@ describe('SceneStack', () => {
     expect(blurred).toBe(1);
   });
 });
+
+describe('resolveChar（キャラ id → 名簿）', () => {
+  it('見つかればそのキャラ、無ければ名簿の先頭', async () => {
+    const { resolveChar, resolveChars } = await import('../src/scenes/config');
+    const { lin, gonzo } = await import('../src/data/data');
+    expect(resolveChar([lin, gonzo], 'gonzo')).toBe(gonzo);
+    expect(resolveChar([lin, gonzo], 'typo')).toBe(lin);
+    expect(resolveChars([lin, gonzo], ['gonzo', 'nope'])).toEqual([gonzo, lin]);
+  });
+});

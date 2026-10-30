@@ -33,7 +33,7 @@ describe('ヒット', () => {
   it('4F目までは当たらず、5F目に当たって体力が 30 減る', () => {
     expect(t[3].fighters[1].health).toBe(850);
     expect(t[4].fighters[1].health).toBe(820);
-    expect(t[4].events).toEqual([{ type: 'hit', attacker: 0, damage: 30 }]);
+    expect(t[4].events).toEqual([{ type: 'hit', attacker: 0, damage: 30, weight: 'light' }]);
   });
 
   it('1回のパンチは1回だけ当たる', () => {
@@ -61,7 +61,7 @@ describe('2P の攻撃', () => {
   it('2P だけがパンチすると、5F目に 1P へ当たる', () => {
     const t = play([400, 500], 5, (i) => [NONE, i === 1 ? inputOf([], ['punch']) : NONE]);
     expect(t[4].fighters[0].health).toBe(820);
-    expect(t[4].events).toEqual([{ type: 'hit', attacker: 1, damage: 30 }]);
+    expect(t[4].events).toMatchObject([{ type: 'hit', attacker: 1, damage: 30 }]);
   });
 });
 
@@ -88,7 +88,7 @@ describe('ガード', () => {
   });
 
   it('ガードしたらガード硬直（軽：10F）になる', () => {
-    expect(t[4].events).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(t[4].events).toMatchObject([{ type: 'block', attacker: 0, damage: 0 }]);
     expect(t[4].fighters[1].state).toEqual({ name: 'blockstun', frame: 0, duration: 10, crouch: false });
   });
 });

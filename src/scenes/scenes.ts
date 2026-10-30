@@ -2,16 +2,17 @@ import type { SceneStack, FrameInput, Scene } from '../core/scene';
 import { createCpu, type CpuController } from '../cpu/cpu';
 import { canRematch, createMatch, stepMatch, type Match } from '../logic/match';
 import type { CharacterData, Controls, InputFrame, Params } from '../logic/types';
-import type { Audio } from '../audio/audio';
+import { soundForPhaseMessage, type Audio } from '../audio/audio';
 import { addEventEffects, createEffects, stepEffects } from '../render/effects';
 import { createTrail, stepTrail } from '../render/healthTrail';
 import { charType } from '../render/labels';
 import { fighterColor } from '../render/palette';
 import { drawPortrait } from '../render/portrait';
 import type { SpriteStore } from '../render/sprites';
+import { phaseMessage } from '../render/hud';
 import { drawFrame, type DebugInfo, type View } from '../render/render';
 import { drawBothControls, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
-import { LEVELS, resultTitle, type MatchConfig, type Mode } from './config';
+import { LEVELS, resolveChar, resolveChars, resultTitle, type MatchConfig, type Mode } from './config';
 import { stepMenu } from './menu';
 import { createSelect, stepSelect, type SelectState } from './select';
 import { KO_SLOW_FRAMES, tickSlow } from './slowmo';
@@ -223,7 +224,7 @@ export class FightScene implements Scene {
     private readonly game: Game,
     private readonly config: MatchConfig,
   ) {
-    const chars = config.chars.map((id) => game.roster.find((c) => c.id === id) ?? game.roster[0]) as [CharacterData, CharacterData];
+    const chars = resolveChars(game.roster, config.chars);
     this.match = createMatch(chars, game.params);
     this.cpu = config.mode === 'cpu' ? createCpu(config.level, game.params, config.seed) : null;
     const [f0, f1] = this.match.battle.fighters;
@@ -234,6 +235,9 @@ export class FightScene implements Scene {
       sprites: game.sprites,
     };
     game.audio?.startBgm('stage');
+    // 最初の「ROUND 1」はステップ前から出ているので、ここで鳴らす
+    const first = soundForPhaseMessage(null, phaseMessage(this.match, game.params));
+    if (first) game.audio?.playSound(first);
   }
 
   /** 今の試合（テスト用） */
@@ -275,6 +279,9 @@ export class FightScene implements Scene {
       this.game.audio?.playEvents(after.battle.events);
       this.view = { ...this.view, effects: addEventEffects(this.view.effects, after.battle.events, after.battle.fighters) };
     }
+    // 試合の進行の表示が変わったら鳴らす（ROUND / FIGHT / KO / TIME UP / WIN）
+    const phaseSound = soundForPhaseMessage(phaseMessage(before, this.game.params), phaseMessage(after, this.game.params));
+    if (phaseSound) this.game.audio?.playSound(phaseSound);
     // KO の瞬間から少しスローにする
     if (before.phase === 'fight' && after.phase === 'roundEnd' && after.lastResult?.reason === 'ko') {
       this.slow = KO_SLOW_FRAMES;
@@ -322,7 +329,7 @@ export class PauseScene implements Scene {
     ctx.font = 'bold 56px sans-serif';
     ctx.fillText('PAUSE', width / 2, 110);
     drawMenu(ctx, ['再開', 'キャラ選択へ', 'タイトルへ'], this.index, width / 2, 190, 48);
-    const chars = this.config.chars.map((id) => this.game.roster.find((c) => c.id === id)!);
+    const chars = resolveChars(this.game.roster, this.config.chars);
     ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f88';
@@ -352,7 +359,8 @@ export class ResultScene implements Scene {
     menuSound(this.game, this.index, r);
     this.index = r.index;
     if (!r.decided) return;
-    if (this.index === 0) this.game.stack.replace(new FightScene(this.game, this.config));
+    // 再戦は CPU の乱数を変える（同じシードだと CPU が前の試合と同じ動きをする）
+    if (this.index === 0) this.game.stack.replace(new FightScene(this.game, { ...this.config, seed: this.game.clock() }));
     else if (this.index === 1) this.game.stack.replace(new SelectScene(this.game, this.config.mode, this.config.level));
     else this.game.stack.replace(new TitleScene(this.game));
   }
@@ -361,7 +369,7 @@ export class ResultScene implements Scene {
     drawScreen(ctx, resultTitle(this.winner, this.config.mode), 80);
     const cx = ctx.canvas.width / 2;
     if (this.winner !== null) {
-      const char = this.game.roster.find((c) => c.id === this.config.chars[this.winner!])!;
+      const char = resolveChar(this.game.roster, this.config.chars[this.winner]);
       // 勝ったキャラの立ち絵（画像が無ければ代わりのキャラ）
       drawPortrait(ctx, this.game.sprites, char, this.game.params, 'win', cx, 370, {
         scale: 0.4,

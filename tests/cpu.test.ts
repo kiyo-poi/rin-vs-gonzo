@@ -3,7 +3,7 @@ import { createCpu, type CpuLevel } from '../src/cpu/cpu';
 import { params, lin, gonzo } from '../src/data/data';
 import { createMatch, stepMatch, type Match } from '../src/logic/match';
 import { BUTTONS, type Fighter, type Params } from '../src/logic/types';
-import { NONE } from './helpers';
+import { inputOf, NONE } from './helpers';
 
 function fightMatch(): Match {
   let m = createMatch([lin, gonzo], params);
@@ -108,5 +108,55 @@ describe('CPU', () => {
       m = stepMatch(m, [NONE, cpu.next(m, 1)], params);
     }
     expect(m.battle.fighters[0].health).toBeLessThan(lin.stats.health);
+  });
+  it('ガードすると決めたら、続けて来る攻撃の間ずっとガードし続ける（1F おきに離さない）', () => {
+    const p: Params = { ...params, cpu: { ...params.cpu!, hard: { reaction: 10, guardRate: 1, specialRate: 0 } } };
+    const cpu = createCpu('hard', p, 3);
+    let m = withFighters(fightMatch(), { x: 900 }, { x: 980 });
+    const states: string[] = [];
+    const hits: number[] = [];
+    const blocks: number[] = [];
+    const healths: number[] = [];
+    // 1P は 1F おきにキックを押し続ける（先行入力で切れ目なくキックが続く）。1発目は反応が間に合わず当たる
+    for (let i = 0; i < 240; i++) {
+      const kick = i % 2 === 0 ? inputOf([], ['kick']) : NONE;
+      m = stepMatch(m, [kick, cpu.next(m, 1)], p);
+      states.push(m.battle.fighters[1].state.name);
+      healths.push(m.battle.fighters[1].health);
+      if (m.battle.events.some((e) => e.type === 'hit')) hits.push(i);
+      if (m.battle.events.some((e) => e.type === 'block')) blocks.push(i);
+    }
+    const first = states.findIndex((s) => s === 'blockstun');
+    expect(first).toBeGreaterThan(0);
+    // 最初にガードしてからは一度も食らわない
+    expect(hits.filter((i) => i > first)).toEqual([]);
+    expect(healths[healths.length - 1]).toBe(healths[first]);
+    // 最初のガードから最後のガードまで（ノックバックで届かなくなるまで）、ずっとガードかガード硬直のまま
+    expect(blocks.length).toBeGreaterThanOrEqual(2);
+    for (const s of states.slice(first, blocks[blocks.length - 1] + 1)) expect(['guard', 'blockstun']).toContain(s);
+  });
+  it('ふつう以上は、ガードを固めて密着している相手をときどき掴む（やさしいは掴まない）', () => {
+    const grabs = (level: CpuLevel) => {
+      const cpu = createCpu(level, params, 4);
+      const m = withFighters(fightMatch(), { x: 900, state: { name: 'guard', frame: 5, crouch: false } }, { x: 960 });
+      let n = 0;
+      for (let i = 0; i < 300; i++) if (cpu.next(m, 1).pressed.grab) n++;
+      return n;
+    };
+    expect(grabs('normal')).toBeGreaterThan(0);
+    expect(grabs('hard')).toBeGreaterThan(0);
+    expect(grabs('easy')).toBe(0);
+  });
+
+  it('つよいはゲージが満タンなら、必殺とガードを同時に押して超必殺を出す', () => {
+    const cpu = createCpu('hard', params, 6);
+    let m = withFighters(fightMatch(), { x: 900 }, { x: 990, gauge: params.gauge.max });
+    let started = false;
+    for (let i = 0; i < 600 && !started; i++) {
+      const inp = cpu.next(m, 1);
+      m = stepMatch(m, [NONE, inp], params);
+      if (m.battle.events.some((e) => e.type === 'superStart' && e.attacker === 1)) started = true;
+    }
+    expect(started).toBe(true);
   });
 });

@@ -51,7 +51,7 @@ describe('しゃがみガード', () => {
       b = stepBattle(b, [i === 1 ? inputOf([], ['kick']) : NONE, inputOf(['down', 'guard'])], params);
       events.push(b.events);
     }
-    expect(events[8]).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(events[8]).toMatchObject([{ type: 'block', attacker: 0, damage: 0 }]);
     expect(b.fighters[1].health).toBe(850);
   });
 });
@@ -66,7 +66,7 @@ describe('しゃがみの姿勢は硬直中も保つ', () => {
 
   it('しゃがみガードでキックを受けたら、ガード硬直中もしゃがみの食らいの箱（高さ 100）', () => {
     const b = blockKick(inputOf(['down', 'guard']));
-    expect(b.events).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(b.events).toMatchObject([{ type: 'block', attacker: 0, damage: 0 }]);
     expect(b.fighters[1].state).toMatchObject({ name: 'blockstun', crouch: true });
     expect(hurtBoxes(b.fighters[1])[0].h).toBe(100);
   });
@@ -104,6 +104,6 @@ describe('しゃがみの姿勢は硬直中も保つ', () => {
       return events;
     };
     expect(jab(true)).toEqual([]);
-    expect(jab(false)).toEqual([{ type: 'block', attacker: 0, damage: 0 }]);
+    expect(jab(false)).toMatchObject([{ type: 'block', attacker: 0, damage: 0 }]);
   });
 });
