@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { params, proto } from '../src/data/data';
+import { controls, params, proto } from '../src/data/data';
 import { createBattle } from '../src/logic/battle';
 import { addEventEffects, createEffects, shakeOffset, SHAKE_FRAMES, SPARK_LIFE, stepEffects, TEXT_LIFE } from '../src/render/effects';
 import { createTrail, stepTrail, TRAIL_HOLD } from '../src/render/healthTrail';
-import { controlLines, keyLabel, moveLines } from '../src/render/labels';
+import { controlLines, fightGuideLines, keyLabel, moveLines } from '../src/render/labels';
 import { fighterColor } from '../src/render/palette';
 
 const fighters = createBattle([proto, proto], params).fighters;
@@ -78,6 +78,25 @@ describe('表示用の文字', () => {
   });
   it('技一覧はキャラデータから作る', () => {
     expect(moveLines(proto)).toContain('パンチ：ジャブ');
+  });
+  it('技一覧は全ての枠を日本語で出し、生のキー名を出さない', () => {
+    const lines = moveLines(proto);
+    for (const raw of ['forwardSpecial', 'downSpecial', 'special', 'grab', 'super', 'crouchPunch', 'airKick']) {
+      expect(lines.some((l) => l.includes(raw))).toBe(false);
+    }
+    expect(lines.some((l) => l.startsWith('→＋必殺：'))).toBe(true);
+    expect(lines.some((l) => l.startsWith('必殺＋ガード（超必殺）：'))).toBe(true);
+    const unknown = { ...proto, moves: { ...proto.moves, mystery: { name: 'ふしぎ' } } } as never;
+    expect(moveLines(unknown)).toContain('ふしぎ');
+  });
+  it('戦闘中の操作案内は controls.json から作る', () => {
+    const [a, b] = fightGuideLines(controls);
+    expect(a).toContain('パンチF');
+    expect(a).toContain('超必殺 V+B');
+    expect(a).toContain('移動ADWS');
+    expect(b).toContain('パンチテン4');
+    expect(b).toContain('別キー');
+    expect(b).toContain('J');
   });
   it('同じキャラ同士なら 2P は色違い', () => {
     expect(fighterColor(['lin', 'lin'], 1)).not.toBe(fighterColor(['lin', 'lin'], 0));

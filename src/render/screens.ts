@@ -1,5 +1,5 @@
 import type { ButtonKeys, CharacterData, Controls } from '../logic/types';
-import { controlLines, keyLabel, moveLines } from './labels';
+import { controlLines, fightGuideLines, keyLabel, moveLines } from './labels';
 
 /** メニュー画面の背景と見出し */
 export function drawScreen(ctx: CanvasRenderingContext2D, title: string, titleSize = 56): void {
@@ -56,10 +56,27 @@ export function drawBothControls(ctx: CanvasRenderingContext2D, controls: Contro
   ctx.fillText(`ポーズ：${controls.pause.map(keyLabel).join(' / ')}`, width / 2, y + 26);
 }
 
-/** 技一覧 */
-export function drawMoveList(ctx: CanvasRenderingContext2D, char: CharacterData, x: number, y: number, align: CanvasTextAlign = 'left'): void {
+/** 技一覧（maxWidth を渡すと、長い行はその幅に縮めて枠からはみ出さない） */
+export function drawMoveList(ctx: CanvasRenderingContext2D, char: CharacterData, x: number, y: number, align: CanvasTextAlign = 'left', maxWidth?: number, lineHeight = 20): void {
   ctx.textAlign = align;
   ctx.fillStyle = '#ddd';
   ctx.font = '16px sans-serif';
-  moveLines(char).forEach((line, i) => ctx.fillText(line, x, y + i * 22));
+  moveLines(char).forEach((line, i) => (maxWidth ? ctx.fillText(line, x, y + i * lineHeight, maxWidth) : ctx.fillText(line, x, y + i * lineHeight)));
+}
+
+/** 戦闘画面の下の操作案内（ゲージの下。半透明の帯の上に2行） */
+export function drawFightGuide(ctx: CanvasRenderingContext2D, controls: Controls): void {
+  const { width, height } = ctx.canvas;
+  const lines = fightGuideLines(controls);
+  const bandH = 52;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(0, height - bandH, width, bandH);
+  ctx.font = '15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f99';
+  ctx.fillText(lines[0], width / 2, height - bandH + 21, width - 40);
+  ctx.fillStyle = '#9cf';
+  ctx.fillText(lines[1], width / 2, height - bandH + 43, width - 40);
+  ctx.restore();
 }

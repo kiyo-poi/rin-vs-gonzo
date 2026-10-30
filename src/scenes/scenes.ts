@@ -12,7 +12,7 @@ import type { SpriteStore } from '../render/sprites';
 import type { ImageStore } from '../render/images';
 import { phaseMessage } from '../render/hud';
 import { drawFrame, type DebugInfo, type View } from '../render/render';
-import { drawBothControls, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
+import { drawBothControls, drawFightGuide, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
 import { LEVELS, resolveChar, resolveChars, resultTitle, stageForMatch, type MatchConfig, type Mode } from './config';
 import { stepMenu } from './menu';
 import { createSelect, stepSelect, type SelectState } from './select';
@@ -172,12 +172,12 @@ export class SelectScene implements Scene {
   draw(ctx: CanvasRenderingContext2D): void {
     drawScreen(ctx, 'キャラ選択', 48);
     const roster = this.game.roster;
-    const cardW = 300;
     const gap = 40;
+    const cardW = Math.min(520, Math.floor((ctx.canvas.width - 80 - gap * (roster.length - 1)) / roster.length));
     const totalW = roster.length * cardW + (roster.length - 1) * gap;
     const left = (ctx.canvas.width - totalW) / 2;
-    const top = 150;
-    const cardH = 340;
+    const top = 140;
+    const cardH = 360;
     const ids = [roster[this.state.cursors[0].index].id, roster[this.state.cursors[1].index].id] as [string, string];
     roster.forEach((char, i) => {
       const x = left + i * (cardW + gap);
@@ -193,11 +193,11 @@ export class SelectScene implements Scene {
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'left';
       ctx.font = 'bold 30px sans-serif';
-      ctx.fillText(char.name, x + 110, top + 55);
+      ctx.fillText(char.name, x + 120, top + 50);
       ctx.font = '18px sans-serif';
       ctx.fillStyle = '#fc3';
-      ctx.fillText(charType(char), x + 110, top + 85);
-      drawMoveList(ctx, char, x + 20, top + 185);
+      ctx.fillText(charType(char), x + 120, top + 80);
+      drawMoveList(ctx, char, x + 120, top + 115, 'left', cardW - 130);
     });
     const labels = ['1P', this.mode === 'cpu' ? 'CPU' : '2P'];
     const colors = ['#f55', '#59f'];
@@ -217,10 +217,10 @@ export class SelectScene implements Scene {
       ctx.fillStyle = '#ccc';
       ctx.textAlign = 'center';
       ctx.font = '16px sans-serif';
-      ctx.fillText('同じキャラ同士は 2P が色違いになります', ctx.canvas.width / 2, top + cardH + 24);
+      ctx.fillText('同じキャラ同士は 2P が色違いになります', ctx.canvas.width / 2, top + cardH + 28);
     }
-    drawHint(ctx, '←→で選ぶ　パンチで決定　ガードで取り消し・戻る（各自のキーで）', 540);
-    drawBothControls(ctx, this.game.controls, 568);
+    drawHint(ctx, '←→で選ぶ　パンチで決定　ガードで取り消し・戻る（各自のキーで）', 556);
+    drawBothControls(ctx, this.game.controls, 584);
   }
 }
 
@@ -310,6 +310,7 @@ export class FightScene implements Scene {
 
   draw(ctx: CanvasRenderingContext2D): void {
     drawFrame(ctx, this.match, this.game.params, this.view, this.game.debug());
+    drawFightGuide(ctx, this.game.controls);
   }
 }
 
@@ -346,13 +347,13 @@ export class PauseScene implements Scene {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f88';
     ctx.fillText(`1P ${chars[0].name} の技`, 80, 330);
-    drawMoveList(ctx, chars[0], 80, 358);
+    drawMoveList(ctx, chars[0], 80, 356, 'left', 540);
     ctx.textAlign = 'right';
     ctx.fillStyle = '#8af';
     ctx.font = 'bold 20px sans-serif';
     ctx.fillText(`${this.config.mode === 'cpu' ? 'CPU' : '2P'} ${chars[1].name} の技`, width - 80, 330);
-    drawMoveList(ctx, chars[1], width - 80, 358, 'right');
-    drawBothControls(ctx, this.game.controls, 560);
+    drawMoveList(ctx, chars[1], width - 80, 356, 'right', 540);
+    drawBothControls(ctx, this.game.controls, 592);
   }
 }
 
