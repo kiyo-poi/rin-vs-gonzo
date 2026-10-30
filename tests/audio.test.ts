@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAudio, noteFreq, RECIPES, soundForEvent, SONGS } from '../src/audio/audio';
+import { createAudio, noteFreq, RECIPES, soundForEvent, soundForPhaseMessage, SONGS } from '../src/audio/audio';
 
 describe('soundForEvent', () => {
   const table: Array<[{ type: string; weight?: string; damage?: number }, string | null]> = [
@@ -57,5 +57,22 @@ describe('createAudio（AudioContext が無い環境）', () => {
   it('未知のイベントは無視する', () => {
     const a = createAudio();
     expect(() => a.playEvents([{ type: 'nope' } as never])).not.toThrow();
+  });
+});
+
+describe('soundForPhaseMessage（試合の進行の音）', () => {
+  it('表示が変わった時だけ、表示に合った音', () => {
+    expect(soundForPhaseMessage(null, 'ROUND 1')).toBe('round');
+    expect(soundForPhaseMessage('ROUND 1', 'FIGHT!')).toBe('fight');
+    expect(soundForPhaseMessage(null, 'K.O.')).toBe('ko');
+    expect(soundForPhaseMessage(null, 'DOUBLE K.O.')).toBe('ko');
+    expect(soundForPhaseMessage(null, 'TIME UP')).toBe('timeup');
+    expect(soundForPhaseMessage('K.O.', '1P WIN')).toBe('win');
+    expect(soundForPhaseMessage(null, 'DRAW GAME')).toBe('draw');
+    expect(soundForPhaseMessage('FIGHT!', 'FIGHT!')).toBeNull();
+    expect(soundForPhaseMessage('FIGHT!', null)).toBeNull();
+  });
+  it('createAudio の playSound は AudioContext が無くても落ちない', () => {
+    expect(() => createAudio().playSound('ko')).not.toThrow();
   });
 });

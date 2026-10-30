@@ -2,13 +2,14 @@ import type { SceneStack, FrameInput, Scene } from '../core/scene';
 import { createCpu, type CpuController } from '../cpu/cpu';
 import { canRematch, createMatch, stepMatch, type Match } from '../logic/match';
 import type { CharacterData, Controls, InputFrame, Params } from '../logic/types';
-import type { Audio } from '../audio/audio';
+import { soundForPhaseMessage, type Audio } from '../audio/audio';
 import { addEventEffects, createEffects, stepEffects } from '../render/effects';
 import { createTrail, stepTrail } from '../render/healthTrail';
 import { charType } from '../render/labels';
 import { fighterColor } from '../render/palette';
 import { drawPortrait } from '../render/portrait';
 import type { SpriteStore } from '../render/sprites';
+import { phaseMessage } from '../render/hud';
 import { drawFrame, type DebugInfo, type View } from '../render/render';
 import { drawBothControls, drawHint, drawMenu, drawMoveList, drawScreen } from '../render/screens';
 import { LEVELS, resultTitle, type MatchConfig, type Mode } from './config';
@@ -234,6 +235,9 @@ export class FightScene implements Scene {
       sprites: game.sprites,
     };
     game.audio?.startBgm('stage');
+    // 最初の「ROUND 1」はステップ前から出ているので、ここで鳴らす
+    const first = soundForPhaseMessage(null, phaseMessage(this.match, game.params));
+    if (first) game.audio?.playSound(first);
   }
 
   /** 今の試合（テスト用） */
@@ -275,6 +279,9 @@ export class FightScene implements Scene {
       this.game.audio?.playEvents(after.battle.events);
       this.view = { ...this.view, effects: addEventEffects(this.view.effects, after.battle.events, after.battle.fighters) };
     }
+    // 試合の進行の表示が変わったら鳴らす（ROUND / FIGHT / KO / TIME UP / WIN）
+    const phaseSound = soundForPhaseMessage(phaseMessage(before, this.game.params), phaseMessage(after, this.game.params));
+    if (phaseSound) this.game.audio?.playSound(phaseSound);
     // KO の瞬間から少しスローにする
     if (before.phase === 'fight' && after.phase === 'roundEnd' && after.lastResult?.reason === 'ko') {
       this.slow = KO_SLOW_FRAMES;
