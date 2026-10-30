@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { gonzo, proto } from '../src/data/data';
 import { createFighter } from '../src/logic/fighter';
 import type { Fighter, FighterState } from '../src/logic/types';
+import { fitBottom } from '../src/render/portrait';
 import { poseFor, poseForMove, POSES, spritePath } from '../src/render/sprites';
 
 const withState = (state: unknown): Fighter => ({ ...createFighter(proto, 400, 1), state: state as FighterState });
@@ -59,5 +60,14 @@ describe('spritePath', () => {
     expect(spritePath('./', 'lin', 'crouch_punch')).toBe('./images/characters/lin/lin_crouch_punch.png');
     expect(spritePath('/', 'gonzo', 'idle')).toBe('/images/characters/gonzo/gonzo_idle.png');
     expect(spritePath('/app', 'lin', 'idle')).toBe('/app/images/characters/lin/lin_idle.png');
+  });
+});
+
+describe('fitBottom', () => {
+  it('縦長の画像は枠の高さに合わせ、左右中央・下揃えにする', () => {
+    expect(fitBottom(480, 720, { x: 60, y: 130, w: 360, h: 270 })).toEqual({ x: 150, y: 130, w: 180, h: 270 });
+  });
+  it('横に収まらない画像は枠の幅に合わせ、下に寄せる', () => {
+    expect(fitBottom(480, 720, { x: 0, y: 0, w: 240, h: 600 })).toEqual({ x: 0, y: 240, w: 240, h: 360 });
   });
 });

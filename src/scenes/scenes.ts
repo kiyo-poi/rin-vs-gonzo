@@ -7,7 +7,7 @@ import { addEventEffects, createEffects, stepEffects } from '../render/effects';
 import { createTrail, stepTrail } from '../render/healthTrail';
 import { charType } from '../render/labels';
 import { fighterColor } from '../render/palette';
-import { drawPortrait } from '../render/portrait';
+import { drawPortrait, drawPortraitImage } from '../render/portrait';
 import type { SpriteStore } from '../render/sprites';
 import type { ImageStore } from '../render/images';
 import { phaseMessage } from '../render/hud';
@@ -187,15 +187,8 @@ export class SelectScene implements Scene {
       ctx.fillStyle = '#2a2a44';
       ctx.fillRect(x, top, cardW, cardH);
       // 立ち絵。カードの左の欄（幅150）に、縦横の比を保って下揃えで収める。無ければ待機ポーズ
-      const portrait = this.game.sprites?.get(char.id, 'portrait');
       const colW = 150;
-      if (portrait) {
-        const boxH = cardH - 20;
-        const s = Math.min(colW / portrait.naturalWidth, boxH / portrait.naturalHeight);
-        const w = portrait.naturalWidth * s;
-        const h = portrait.naturalHeight * s;
-        ctx.drawImage(portrait, x + 8 + (colW - w) / 2, top + 10 + boxH - h, w, h);
-      } else {
+      if (!drawPortraitImage(ctx, this.game.sprites, char, { x: x + 8, y: top + 10, w: colW, h: cardH - 20 })) {
         ctx.save();
         ctx.beginPath();
         ctx.rect(x + 10, top + 10, colW - 10, 160);
@@ -400,12 +393,15 @@ export class ResultScene implements Scene {
     const cx = ctx.canvas.width / 2;
     if (this.winner !== null) {
       const char = resolveChar(this.game.roster, this.config.chars[this.winner]);
-      // 勝ったキャラの立ち絵（画像が無ければ代わりのキャラ）
+      const altColor = this.winner === 1 && this.config.chars[0] === this.config.chars[1];
+      // 勝ったキャラの立ち絵を左に大きく出す
+      drawPortraitImage(ctx, this.game.sprites, char, { x: 30, y: 130, w: 360, h: 580 }, altColor);
+      // 勝ちポーズ（画像が無ければ代わりのキャラ）
       drawPortrait(ctx, this.game.sprites, char, this.game.params, 'win', cx, 370, {
         scale: 0.4,
         fallbackScale: 1.3,
-        colorIndex: this.winner === 1 && this.config.chars[0] === this.config.chars[1] ? 1 : 0,
-        altColor: this.winner === 1 && this.config.chars[0] === this.config.chars[1],
+        colorIndex: altColor ? 1 : 0,
+        altColor,
       });
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
