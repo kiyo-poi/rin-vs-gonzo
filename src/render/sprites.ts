@@ -1,4 +1,5 @@
 import type { Fighter } from '../logic/types';
+import { recolorPixels, type Recolor } from './recolor';
 
 /** 07_assets.md のポーズ名（ファイル名に使う） */
 export const POSES = [
@@ -99,13 +100,13 @@ export function createSpriteStore(base: string): SpriteStore {
   };
 }
 
-const tintCache = new WeakMap<CanvasImageSource, Map<string, HTMLCanvasElement>>();
+const recolorCache = new WeakMap<CanvasImageSource, Map<Recolor, HTMLCanvasElement>>();
 
-/** 色味を乗せた複製を作る（画像ごと・色ごとに1回だけ。毎フレームのフィルタは使わない） */
-export function tintedImage(img: HTMLImageElement, color: string): CanvasImageSource {
-  let byColor = tintCache.get(img);
-  if (!byColor) { byColor = new Map(); tintCache.set(img, byColor); }
-  const hit = byColor.get(color);
+/** 衣装の色を差し替えた複製を作る（画像ごと・差し替え方ごとに1回だけ） */
+export function recoloredImage(img: HTMLImageElement, rule: Recolor): CanvasImageSource {
+  let byRule = recolorCache.get(img);
+  if (!byRule) { byRule = new Map(); recolorCache.set(img, byRule); }
+  const hit = byRule.get(rule);
   if (hit) return hit;
   const c = document.createElement('canvas');
   c.width = img.naturalWidth || POSE_CANVAS;
@@ -113,19 +114,16 @@ export function tintedImage(img: HTMLImageElement, color: string): CanvasImageSo
   const g = c.getContext('2d');
   if (!g) return img;
   g.drawImage(img, 0, 0);
-  g.globalCompositeOperation = 'source-atop'; // 不透明な部分だけ染める
-  g.fillStyle = color;
-  g.fillRect(0, 0, c.width, c.height);
-  byColor.set(color, c);
+  const data = g.getImageData(0, 0, c.width, c.height);
+  recolorPixels(data.data, c.width, c.height, rule);
+  g.putImageData(data, 0, 0);
+  byRule.set(rule, c);
   return c;
 }
 
-/** 2P 用の色味（半透明の青）。drawFighterSprite の tint に渡す */
-export const TINT_2P = 'rgba(80,120,255,0.35)';
-
 /**
  * スプライトを描く。screenX・groundY は足元の画面座標（ジャンプ中は高さ分を引いた位置を渡す）。
- * 画像の (320,600) を足元に合わせ、左向きなら左右反転する。tint を渡すと色味を乗せた複製を使う。
+ * 画像の (320,600) を足元に合わせ、左向きなら左右反転する。recolor を渡すと衣装の色を差し替えた複製を使う。
  */
 export function drawFighterSprite(
   ctx: CanvasRenderingContext2D,
@@ -134,9 +132,9 @@ export function drawFighterSprite(
   screenX: number,
   groundY: number,
   scale = 1,
-  tint?: string,
+  recolor?: Recolor,
 ): void {
-  const src = tint ? tintedImage(img, tint) : img;
+  const src = recolor ? recoloredImage(img, recolor) : img;
   const w = img.naturalWidth || POSE_CANVAS;
   const h = img.naturalHeight || POSE_CANVAS;
   ctx.save();

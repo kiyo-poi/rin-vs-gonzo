@@ -1,7 +1,8 @@
 import { createMatch } from '../logic/match';
 import type { CharacterData, Fighter, Params } from '../logic/types';
 import { drawFallbackFighter } from './characterDraw';
-import { drawFighterSprite, TINT_2P, type Pose, type SpriteStore } from './sprites';
+import { mirrorRecolor } from './palette';
+import { drawFighterSprite, type Pose, type SpriteStore } from './sprites';
 
 /** 画面表示用の、立ちポーズの選手（キャラごとに使い回す） */
 const cache = new WeakMap<CharacterData, Fighter>();
@@ -27,12 +28,12 @@ export function drawPortrait(
   pose: Pose,
   feetX: number,
   feetY: number,
-  opts: { scale?: number; fallbackScale?: number; colorIndex?: number; tint?: boolean } = {},
+  opts: { scale?: number; fallbackScale?: number; colorIndex?: number; altColor?: boolean } = {},
 ): void {
   const f = displayFighter(char, params);
   const img = sprites?.get(char.id, pose) ?? null;
   if (img) {
-    drawFighterSprite(ctx, img, f, feetX, feetY, opts.scale ?? 0.4, opts.tint ? TINT_2P : undefined);
+    drawFighterSprite(ctx, img, f, feetX, feetY, opts.scale ?? 0.4, opts.altColor ? mirrorRecolor(char.id) : undefined);
     return;
   }
   const s = opts.fallbackScale ?? 1.2;

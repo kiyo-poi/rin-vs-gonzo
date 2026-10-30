@@ -8,7 +8,8 @@ import { shakeOffset, type Effect, type EffectsState } from './effects';
 import type { Trail } from './healthTrail';
 import { comboLabel, gaugeView, phaseMessage, THROWN_LIFT } from './hud';
 import { drawFallbackFighter } from './characterDraw';
-import { drawFighterSprite, poseFor, TINT_2P, type SpriteStore } from './sprites';
+import { mirrorRecolor } from './palette';
+import { drawFighterSprite, poseFor, type SpriteStore } from './sprites';
 
 export interface DebugInfo {
   /** 開発用の表示（攻撃の箱・状態・押しているキー）を出すか */
@@ -86,7 +87,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, match: Match, params: P
         ctx.shadowBlur = 14;
       }
       // 同じキャラ同士の時だけ 2P を色違いにする
-      if (img) drawFighterSprite(ctx, img, f, screenX, feetY, 1, mirror && i === 1 ? TINT_2P : undefined);
+      if (img) drawFighterSprite(ctx, img, f, screenX, feetY, 1, mirror && i === 1 ? mirrorRecolor(f.char.id) : undefined);
       else drawFallbackFighter(ctx, f, screenX, feetY, mirror && i === 1 ? 1 : 0);
       ctx.restore();
     }

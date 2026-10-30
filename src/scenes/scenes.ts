@@ -394,7 +394,7 @@ export class ResultScene implements Scene {
         scale: 0.4,
         fallbackScale: 1.3,
         colorIndex: this.winner === 1 && this.config.chars[0] === this.config.chars[1] ? 1 : 0,
-        tint: this.winner === 1 && this.config.chars[0] === this.config.chars[1],
+        altColor: this.winner === 1 && this.config.chars[0] === this.config.chars[1],
       });
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
