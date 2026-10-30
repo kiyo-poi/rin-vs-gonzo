@@ -1,15 +1,17 @@
-/** 2P の色違い：衣装の色（決まった色相の範囲）だけを別の色相に差し替える */
+/**
+ * 2P の色違い：パンツ（体の下半分にある、黒い大きな塊）だけを別の色にする。
+ * 他の部分（肌・服・髪・輪郭線）の色は変えない。
+ */
 export interface Recolor {
-  /** 差し替える色相の範囲（度）。from > to なら 0 度をまたぐ（例：340〜15 の赤） */
-  from: number;
-  to: number;
-  /** これより鮮やかな色だけ変える（0〜1）。肌や影は変えない */
-  minSat: number;
-  /** 差し替え先の色相（度） */
+  /** パンツの新しい色相（度） */
   hue: number;
-  /** 不透明な部分に対してこの割合より小さい塊は変えない（口・頬など） */
-  minArea: number;
 }
+
+/** 2P のパンツの色（青） */
+export const PANTS_2P: Recolor = { hue: 215 };
+
+/** 輪郭線を消すために縮める幅（px）。線より太い塊だけが残る */
+const ERODE = 3;
 
 function hsv(r: number, g: number, b: number): [number, number, number] {
   const max = Math.max(r, g, b);
@@ -31,44 +33,84 @@ function rgb(h: number, s: number, v: number): [number, number, number] {
   return [f(5), f(3), f(1)];
 }
 
+/** 正方形の範囲での最小（keep=0）・最大（keep=1）。縦横に分けて計算する */
+function squareFilter(m: Uint8Array, w: number, h: number, r: number, max: boolean): Uint8Array {
+  const pass = (src: Uint8Array, horizontal: boolean) => {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let v = max ? 0 : 1;
+        for (let k = -r; k <= r; k++) {
+          const xx = horizontal ? x + k : x;
+          const yy = horizontal ? y : y + k;
+          const s = xx < 0 || yy < 0 || xx >= w || yy >= h ? 0 : src[yy * w + xx];
+          if (max ? s : !s) { v = max ? 1 : 0; break; }
+        }
+        out[y * w + x] = v;
+      }
+    }
+    return out;
+  };
+  return pass(pass(m, true), false);
+}
+
 /** RGBA の画素列を直接書き換える（canvas の ImageData.data をそのまま渡す） */
 export function recolorPixels(data: Uint8ClampedArray, w: number, h: number, rule: Recolor): void {
-  const inRange = (deg: number) => (rule.from <= rule.to ? deg >= rule.from && deg <= rule.to : deg >= rule.from || deg <= rule.to);
-  const cand = new Uint8Array(w * h);
-  let opaque = 0;
+  // 暗くて色の薄い画素（黒いパンツ・髪・ひげ・輪郭線）
+  const dark = new Uint8Array(w * h);
+  let top = h;
+  let bottom = -1;
   for (let i = 0; i < w * h; i++) {
-    if (data[i * 4 + 3] < 10) continue;
-    opaque++;
-    const [hh, s, v] = hsv(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
-    if (inRange(hh) && s >= rule.minSat && v > 0.25) cand[i] = 1;
+    if (data[i * 4 + 3] <= 40) continue;
+    const y = Math.floor(i / w);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+    if (data[i * 4 + 3] < 128) continue;
+    const [, s, v] = hsv(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+    if (v < 0.42 && s < 0.45) dark[i] = 1;
   }
-  // 候補を上下左右でつながった塊に分け、大きい塊（衣装）だけ色を変える
-  const seen = new Uint8Array(w * h);
-  const stack: number[] = [];
-  const minArea = rule.minArea * opaque;
+  if (bottom < 0) return;
+  // 細い輪郭線を消し、残った塊のうち体の下半分（上から4割より下）にある大きいものをパンツとする
+  const core = squareFilter(dark, w, h, ERODE, false);
+  const label = new Int32Array(w * h).fill(-1);
+  const blobs: { n: number; pts: number[] }[] = [];
   for (let start = 0; start < w * h; start++) {
-    if (!cand[start] || seen[start]) continue;
-    const blob: number[] = [];
-    seen[start] = 1;
-    stack.push(start);
+    if (!core[start] || label[start] >= 0) continue;
+    const id = blobs.length;
+    const pts: number[] = [];
+    const stack = [start];
+    label[start] = id;
     while (stack.length) {
       const p = stack.pop()!;
-      blob.push(p);
+      pts.push(p);
       const x = p % w;
       for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
-        if (q >= 0 && q < w * h && cand[q] && !seen[q]) {
-          seen[q] = 1;
+        if (q >= 0 && q < w * h && core[q] && label[q] < 0) {
+          label[q] = id;
           stack.push(q);
         }
       }
     }
-    if (blob.length < minArea) continue;
-    for (const p of blob) {
-      const [, s, v] = hsv(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
-      const [r, g, b] = rgb(rule.hue, s, v * 0.95);
-      data[p * 4] = r;
-      data[p * 4 + 1] = g;
-      data[p * 4 + 2] = b;
-    }
+    blobs.push({ n: pts.length, pts });
+  }
+  const height = bottom - top + 1;
+  const lower = blobs.filter((b) => {
+    const cy = b.pts.reduce((sum, p) => sum + Math.floor(p / w), 0) / b.n;
+    return (cy - top) / height >= 0.4;
+  });
+  if (!lower.length) return;
+  const biggest = Math.max(...lower.map((b) => b.n));
+  const mask = new Uint8Array(w * h);
+  for (const b of lower) if (b.n >= biggest * 0.2) for (const p of b.pts) mask[p] = 1;
+  // 縮めた分を戻す（暗い画素の中だけ）
+  const grown = squareFilter(mask, w, h, ERODE + 1, true);
+  for (let i = 0; i < w * h; i++) {
+    if (!grown[i] || !dark[i]) continue;
+    const [, , v] = hsv(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+    // 黒のままだと色が見えないので明るくする（影の濃淡は残す）
+    const [r, g, b] = rgb(rule.hue, 0.75, Math.min(1, 0.3 + v * 1.6));
+    data[i * 4] = r;
+    data[i * 4 + 1] = g;
+    data[i * 4 + 2] = b;
   }
 }

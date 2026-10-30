@@ -1,38 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import { recolorPixels, type Recolor } from '../src/render/recolor';
+import { PANTS_2P, recolorPixels } from '../src/render/recolor';
 
-const RED_TO_BLUE: Recolor = { from: 340, to: 15, minSat: 0.45, hue: 220, minArea: 0.1 };
+type RGB = [number, number, number];
+const SKIN: RGB = [250, 200, 150];
+const BLACK: RGB = [20, 20, 20];
+const RED: RGB = [220, 30, 30];
 
-/** w×h の画像を、色の配列（1画素ずつ、null は透明）から作る */
-function image(px: ([number, number, number] | null)[]): Uint8ClampedArray {
-  const d = new Uint8ClampedArray(px.length * 4);
-  px.forEach((c, i) => {
-    if (c) d.set([...c, 255], i * 4);
-  });
-  return d;
+/** 30×40 の人：上半分は肌、頭に黒い髪の塊、下半分に黒いパンツの塊、全体に細い黒の輪郭線 */
+function figure(): { d: Uint8ClampedArray; w: number; h: number } {
+  const w = 30;
+  const h = 40;
+  const d = new Uint8ClampedArray(w * h * 4);
+  const put = (x: number, y: number, c: RGB) => d.set([...c, 255], (y * w + x) * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1;
+      const hair = y < 10 && x > 5 && x < 25;
+      const pants = y >= 24 && y < 36 && x > 3 && x < 27;
+      const shirt = y >= 14 && y < 20;
+      put(x, y, edge || hair || pants ? BLACK : shirt ? RED : SKIN);
+    }
+  }
+  return { d, w, h };
 }
-const at = (d: Uint8ClampedArray, i: number) => [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]];
+const at = (d: Uint8ClampedArray, w: number, x: number, y: number) => [...d.slice((y * w + x) * 4, (y * w + x) * 4 + 3)];
 
-describe('2P の色違い（衣装の色の差し替え）', () => {
-  it('大きな赤い塊は青に変わり、肌色と黒はそのまま', () => {
-    const R: [number, number, number] = [220, 30, 30];
-    const SKIN: [number, number, number] = [250, 215, 190];
-    const BLACK: [number, number, number] = [20, 20, 20];
-    const d = image([R, R, R, R, SKIN, BLACK, null, null]);
-    recolorPixels(d, 4, 2, RED_TO_BLUE);
-    const [r, g, b] = at(d, 0);
-    expect(b).toBeGreaterThan(r);
+describe('2P の色違い（パンツの色だけ変える）', () => {
+  it('下半分の黒い塊（パンツ）は青くなる', () => {
+    const { d, w, h } = figure();
+    recolorPixels(d, w, h, PANTS_2P);
+    const [r, g, b] = at(d, w, 15, 30);
+    expect(b).toBeGreaterThan(r + 40);
     expect(b).toBeGreaterThan(g);
-    expect(at(d, 4)).toEqual(SKIN);
-    expect(at(d, 5)).toEqual(BLACK);
   });
 
-  it('小さい赤（口など）は変えない', () => {
-    const R: [number, number, number] = [220, 30, 30];
-    const S: [number, number, number] = [250, 215, 190];
-    // 赤1画素だけ・不透明20画素 → 5% < 10%
-    const d = image([R, ...Array(19).fill(S)]);
-    recolorPixels(d, 20, 1, RED_TO_BLUE);
-    expect(at(d, 0)).toEqual(R);
+  it('髪・輪郭線・肌・服の色は変えない', () => {
+    const { d, w, h } = figure();
+    recolorPixels(d, w, h, PANTS_2P);
+    expect(at(d, w, 15, 5)).toEqual(BLACK);
+    expect(at(d, w, 0, 20)).toEqual(BLACK);
+    expect(at(d, w, 15, 12)).toEqual(SKIN);
+    expect(at(d, w, 15, 16)).toEqual(RED);
   });
 });
