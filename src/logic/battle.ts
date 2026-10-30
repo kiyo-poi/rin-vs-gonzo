@@ -101,6 +101,8 @@ function markHitDone(f: Fighter, index: number): Fighter {
 function resolveAttack(attacker: Fighter, defender: Fighter): { hit: HitData; index: number; blocked: boolean } | null {
   const active = activeHitbox(attacker);
   if (!active || !isHittable(defender)) return null;
+  // 地上だけに当たる当たり（衝撃波）は、空中の相手には当たらない
+  if (active.hit.groundOnly && isAirborne(defender)) return null;
   if (!hurtBoxes(defender).some((box) => overlaps(active.box, box))) return null;
   const blocked = attacker.guardLocked || defender.state.name === 'guard' || defender.state.name === 'blockstun';
   return { hit: active.hit, index: active.index, blocked };

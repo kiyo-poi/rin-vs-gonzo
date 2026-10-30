@@ -193,13 +193,47 @@
       "kind": "special"
     },
     "downSpecial": {
-      "name": "下必殺（仮）",
+      "name": "ヒップドロップ",
       "posture": "stand",
-      "startup": 10,
-      "active": 2,
-      "recovery": 20,
-      "hits": [],
-      "kind": "special"
+      "startup": 30,
+      "active": 6,
+      "recovery": 24,
+      "hits": [
+        {
+          "damage": 100,
+          "weight": "heavy",
+          "box": {
+            "x": -160,
+            "y": 0,
+            "w": 320,
+            "h": 30
+          },
+          "frames": {
+            "from": 1,
+            "to": 6
+          },
+          "groundOnly": true
+        }
+      ],
+      "kind": "special",
+      "movement": [
+        {
+          "frames": {
+            "from": 1,
+            "to": 15
+          },
+          "dx": 0,
+          "dy": 120
+        },
+        {
+          "frames": {
+            "from": 16,
+            "to": 30
+          },
+          "dx": 0,
+          "dy": -120
+        }
+      ]
     },
     "grab": {
       "name": "掴み（仮）",

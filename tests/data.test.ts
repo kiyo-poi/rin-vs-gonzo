@@ -118,4 +118,27 @@ describe('キャラデータ', () => {
     expect(m.hits.map((h) => h.weight)).toEqual(['light', 'light', 'light', 'light', 'medium']);
     expect(m.hits[0].box).toEqual({ x: 20, y: 90, w: 110, h: 30 });
   });
+
+  it('昇り蹴りは 5/8/30・100・重、無敵1〜7F、上昇してから着地まで', () => {
+    const m = lin.moves.downSpecial;
+    expect([m.startup, m.active, m.recovery, m.hits[0].damage, m.hits[0].weight]).toEqual([5, 8, 30, 100, 'heavy']);
+    expect(m.kind).toBe('special');
+    expect(m.invincible).toEqual([{ from: 1, to: 7 }]);
+    expect(m.movement).toEqual([
+      { frames: { from: 6, to: 13 }, dx: 30, dy: 140 },
+      { frames: { from: 14, to: 43 }, dx: 0, dy: -140 },
+    ]);
+    expect(m.hits[0].box).toEqual({ x: 0, y: 60, w: 70, h: 100 });
+  });
+
+  it('ヒップドロップは 30/6/24・100・重、発生中にジャンプ、衝撃波は左右 160px の地上だけ', () => {
+    const m = gonzo.moves.downSpecial;
+    expect([m.startup, m.active, m.recovery, m.hits[0].damage, m.hits[0].weight]).toEqual([30, 6, 24, 100, 'heavy']);
+    expect(m.kind).toBe('special');
+    expect(m.movement).toEqual([
+      { frames: { from: 1, to: 15 }, dx: 0, dy: 120 },
+      { frames: { from: 16, to: 30 }, dx: 0, dy: -120 },
+    ]);
+    expect(m.hits[0]).toMatchObject({ frames: { from: 1, to: 6 }, groundOnly: true, box: { x: -160, y: 0, w: 320, h: 30 } });
+  });
 });

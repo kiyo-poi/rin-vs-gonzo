@@ -59,9 +59,15 @@ export function activeHitbox(f: Fighter): { box: Box; hit: HitData; index: numbe
   return { box: toWorld(hit.box, f), hit, index };
 }
 
-/** 攻撃を食らう状態か。ダウン・落下中と、起き上がり無敵の間は当たらない */
+/** 攻撃を食らう状態か。ダウン・落下中と、起き上がり無敵・技の無敵の間は当たらない */
 export function isHittable(f: Fighter): boolean {
-  return f.state.name !== 'knockdown' && f.state.name !== 'airHit' && f.invincible <= 0;
+  if (f.state.name === 'knockdown' || f.state.name === 'airHit' || f.invincible > 0) return false;
+  const cur = currentAttack(f);
+  if (cur) {
+    const invincible = getMove(f.char, cur.move).invincible;
+    if (invincible?.some((r) => cur.frame >= r.from && cur.frame <= r.to)) return false;
+  }
+  return true;
 }
 
 /** 相打ちで弾かれる。地上なら動けなくなる。空中なら空中技が消えて落ち続け、着地しても弾かれた時間が終わるまで動けない（used は残す） */

@@ -264,13 +264,48 @@
       "guardLock": true
     },
     "downSpecial": {
-      "name": "下必殺（仮）",
+      "name": "昇り蹴り",
       "posture": "stand",
-      "startup": 10,
-      "active": 2,
-      "recovery": 20,
-      "hits": [],
-      "kind": "special"
+      "startup": 5,
+      "active": 8,
+      "recovery": 30,
+      "hits": [
+        {
+          "damage": 100,
+          "weight": "heavy",
+          "box": {
+            "x": 0,
+            "y": 60,
+            "w": 70,
+            "h": 100
+          }
+        }
+      ],
+      "kind": "special",
+      "invincible": [
+        {
+          "from": 1,
+          "to": 7
+        }
+      ],
+      "movement": [
+        {
+          "frames": {
+            "from": 6,
+            "to": 13
+          },
+          "dx": 30,
+          "dy": 140
+        },
+        {
+          "frames": {
+            "from": 14,
+            "to": 43
+          },
+          "dx": 0,
+          "dy": -140
+        }
+      ]
     },
     "grab": {
       "name": "掴み（仮）",
